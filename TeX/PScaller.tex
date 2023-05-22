@@ -1,0 +1,1040 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[latin1]{inputenc}
+\usepackage{times}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{latexsym}
+\usepackage{tipa}
+\usepackage{pictex}
+\usepackage[authoryear,round]{natbib}
+\setcounter{secnumdepth}{0} \linespread{1.5}
+ 
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{graphicx}
+\usepackage{verbatim}
+\usepackage{amsfonts}
+\usepackage{latexsym}
+\usepackage{natbib}
+\usepackage{xr}
+\usepackage{setspace}
+\usepackage{framed}
+\usepackage{cancel}
+\usepackage{subcaption}
+
+\newcommand{\comb}[2]{{#1 \choose #2}}
+\newcommand{\mosr}[1]{{ #1}}
+
+\newif\ifdraft
+\draftfalse
+%\drafttrue 
+
+\begin{document}
+
+\title{PFcaller: A Frequency Caller for Pools and Polyploids.}
+%\author{Sebastian E. Ramos-Onsins, Pablo Librado, Alejandro Sanchez-Gracia, \\Sara Guirao, Emanuele Raineri, Amy Lawton-Rauh\\Luca Ferretti\\ (Contributed: not yet the real order)}
+\date{\today}
+\maketitle
+
+The analysis in population genetics requires an unbiased estimate of the site frequency spectrum (SFS) to be accurate. The high-performance NGS methods produce a high number of reads for each base but also generates a similar or higher ratios of sequencing error than the population levels of variability that are wanted to be estimated. This effect becomes worst in case of having several numbers of lines per NGS lane. For diploid data, several methods to produce accurate results have been obtained \citep[\textit{e.g.},][]{Maruki:2015aa,Nevado:2014aa,Korneliussen:2014aa,Roesti:2012aa,Hohenlohe:2010aa}. Nevertheless, in case of using several or many lines within each NGS lane (pools or polyploids), the site frequency spectrum is difficult to calculate, specially for low frequency variants \citep{Ferretti:2013aa,Raineri:2012aa}. [Lynch, Kofler, Lynch et al. etc...]\\
+
+In order to calculate accurately the SFS we think it is convenient to sacrifice the count of all individual lines included in the NGS lane (that may contain sequencing errors at low frequency) in order to have unbiased estimates of variability for any frequency considered at the new sample size (the number of lines accounted would be smaller than the included in the lane). Furthermore, not only the SFS would be unbiased but also the variance of the levels of variability would be similar to the initial sample size included in the lane (Ferretti et al. pools) by averaging over all the studied region. \\
+
+\section{Algorithm}
+For a given site, we are interested in inferring the number of real lines that contributed to the observed reads. That is, the effective number of contributed lines having alternative sequence ($\nu_{CA}$) and the effective number of contributed reference lines ($\nu_{CR}$) that finally we observe in the form of reads ($n_{r}$) with some of them carrying the alternative ($n_{rA}$) or reference alleles ($n_{rR}$). We designate reference allele to the allele with a major frequency and alternative allele to the second allele (minor allele frequency in a biallelic context). Thus, for a given number of initial sampled lines ($p$) in a NGS lane, we are interested in calculating the following probability:
+
+\begin{equation}
+P(\nu_{CA},\nu_{CR} | n_{rR},n_{rA},p).
+\end{equation}
+
+\noindent In fact, the number of contributed lines and 
+the frequency of alternative alleles would be affected by the level of the variability of the sampled population (per position, $\theta \ll 1$) and by the probability of having sequencing error ($\xi$) at this position an at each read variant. Then, reformulating the equation including new parameters we have: 
+
+\begin{equation}
+P_{\nu_{CA}\nu_{CR}} = P(\nu_{CA},\nu_{CR}, \pi_a,f_a, \nu_{\xi_{A}}, \nu_{\xi_{R}} | n_{rR},n_{rA},n_{r\xi},\xi,\theta,p), %,\nu_{\xi_{\xi{A}}} %_A,\xi_R, \xi_\xi
+\end{equation}
+
+\noindent where $\pi_a$ is the frequency of alternative allele samples in the pooled sample (of size $p$), $f_a$ refers to the frequency of the alternative variant in the population and $\nu_{\xi_{R}}$ and $\nu_{\xi_{A}}$ refers to the number of errors in the reference and in the alternative allele at that position, respectively. This probability can be decomposed in:
+
+\begin{equation}
+\begin{split}
+P_{\nu_{CA}\nu_{CR}}  = P(\nu_{CA},\nu_{CR} | \pi_a, f_a, \nu_{\xi_{A}}, \nu_{\xi_{R}}, n_{rR},n_{rA},n_{r\xi},\xi,\theta,p) \cdot\\ %, \nu_{\xi_{\xi{A}}}, \nu_{\xi_{\xi{R}}} %_A,\xi_R, \xi_\xi
+\ifdraft 
+P(\pi_a | f_a, \nu_{\xi_{A}}, \nu_{\xi_{R}}, n_{rR},n_{rA},n_{r\xi},\xi,\theta,p) \cdot\\ %, \nu_{\xi_{\xi{A}}}, \nu_{\xi_{\xi{R}}} % _A,\xi_R, \xi_\xi
+P(\nu_{\xi_{A}}, \nu_{\xi_{R}} | n_{rR},n_{rA},n_{r\xi},\xi,\theta,p) %, \nu_{\xi_{\xi{A}}}, \nu_{\xi_{\xi{R}}} % \cdot\\ %_A,\xi_R, \xi_\xi
+\else
+P(\nu_{\xi_{A}}, \nu_{\xi_{R}} | \pi_a, f_a, n_{rR},n_{rA},n_{r\xi},\xi,\theta,p) \cdot\\ %, \nu_{\xi_{\xi{A}}}, \nu_{\xi_{\xi{R}}} %_A,\xi_R, \xi_\xi
+P(\pi_a, f_a | n_{rR},n_{rA},n_{r\xi},\xi,\theta,p) % \cdot\\ %_A,\xi_R, \xi_\xi
+\fi
+%\cancel{P(n_{rR},n_{rA},n_{r\xi},\xi_A,\xi_R, \xi_\xi,\theta,p)}  \cdot \\
+%\frac{1}{\cancel{P(n_{rR},n_{rA},n_{r\xi},\xi_A,\xi_R, \xi_\xi,\theta,p)}}
+.
+\label{main.equation}
+\end{split}
+\end{equation}
+
+\noindent The first term of the equation are the  parameters we are interested in. The other terms contain necessary parameters for estimating $\nu_{CA}$ and $\nu_{CR}$.% The first term is:\\
+
+\subsection{Combinatorics}
+The first term probability of the equation \ref{main.equation} can be calculated as two independent probabilities, considering  that the final number of reads for each variant ($n_{rA}$, $n_{rR}$) are consequence of  sampling of the reads, in relation to their frequency ($\pi_a$, $p-\pi_a$), but also considering their error sequencing ($\nu_{\xi_{A}}$, $\nu_{\xi_{R}}$). Here we prefer to estimate $\nu_{CA}$ and $\nu_{C} = \nu_{CA} + \nu_{CR}$ instead of   $\nu_{CR}$ directly:
+\begin{equation}
+\begin{split}
+P(\nu_{CA},\nu_{C} | \pi_a, f_a, \nu_{\xi_{A}}, \nu_{\xi_{R}}, n_{rR},n_{rA},n_{r\xi},\xi,\theta,p) % , \nu_{\xi_{\xi{A}}}, \nu_{\xi_{\xi{R}}} % _A,\xi_R, \xi_\xi
+= \\ P(\nu_{CA} |\nu_{C}, \pi_a, f_a, \nu_{\xi_{A}}, \nu_{\xi_{R}}, n_{rR},n_{rA},n_{r\xi},\xi,\theta,p) \cdot   %, \nu_{\xi_{\xi{A}}}, \nu_{\xi_{\xi{R}}} %_A,\xi_R, \xi_\xi
+\\P(\nu_{C} | \pi_a, f_a, \nu_{\xi_{A}}, \nu_{\xi_{R}}, n_{rR},n_{rA},n_{r\xi},\xi,\theta,p)% , \nu_{\xi_{\xi{A}}}, \nu_{\xi_{\xi{R}}} %_A,\xi_R, \xi_\xi
+= \\  P(\nu_{CA} | \nu_{CR}, \pi_a, \nu_{rA}) \cdot P(\nu_{CR} |  \pi_r, \nu_{rR}), %
+%= \\  P(\nu_{CA} | \pi_a, \nu_{C},p) \cdot P(\nu_{C} |  n_{rR},n_{rA},p),%= \\  P(\nu_{CA} | \pi_a, \nu_{rA}) \cdot P(\nu_{CR} |  \pi_r, \nu_{rR}),
+%= \\  \frac{\frac{p-\pi_r!}{(p-\pi_r-\nu_{CA})!} S(n_{rA}-\nu_{\xi_{A}}+\nu_{\xi_{R}},\nu_{CA})}{(p-\pi_r)^{n_{rA}-\nu_{\xi_{A}}+\nu_{\xi_{R}}}} \cdot \frac{\frac{\pi_r!}{(\pi_r-\nu_{CR})!} S(n_{rR}-\nu_{\xi_{R}}+\nu_{\xi_{A}},\nu_{CR})}{\pi_r^{n_{rR}-\nu_{\xi_{R}}+\nu_{\xi_{A}}}},
+\label{double.combinatorics}r
+\end{split}
+\end{equation}
+where $\pi_r=p-\pi_a$, $\nu_{rR} = n_{rR} - \nu_{\xi_{R}} + \nu_{\xi_{A}}% + \nu_{\xi_{\xi{R}}}
+$ is the number of Reference reads without sequencing errors and $\nu_{rA} = n_{rA} - \nu_{\xi_{A}} + \nu_{\xi_{R}}% + \nu_{\xi_{\xi{A}}}
+$ is the number of Alternative reads without sequencing errors. The first term is obtained with a binomial and second term can be obtained from combinatorics \citep[eq. 2]{Ferretti:2013aa} using Stirling numbers. That is:
+\begin{equation}
+\begin{split}
+P(\nu_{CA} |  \pi_a,\nu_{rA}) = \frac{\frac{\pi_a!}{(\pi_a-\nu_{CA})!} S(\nu_{rA},\nu_{CA})}{\pi_a^{\nu_{rA}}} \text{ and}  \\
+P(\nu_{CR} |  \pi_r,\nu_{rR}) = \frac{\frac{\pi_r!}{(\pi_r-\nu_{CR})!} S(\nu_{rR},\nu_{CR})}{\pi_r^{\nu_{rR}}},
+%P(\nu_{CA} | \pi_a, \nu_{C},p) = \frac{\nu_{C}!}{\nu_{CA}! (\nu_{C}-\nu_{CA})!} (\frac{\pi_a}{p})^{\nu_{CA}} (1-\frac{\pi_a}{p})^{(\nu_{C}-\nu_{CA})} \text{ and} \\
+%P(\nu_{C} |  \nu_{rA},\nu_{rR},p) = \frac{\frac{p!}{(p-\nu_{C})!} S(\nu_{r},\nu_{C})}{p^{\nu_{r}}},
+ \label{simple.combinatorics}
+\end{split}
+\end{equation}
+\noindent where $S(\nu_{r},\nu_{C})$ are the Stirling numbers of the second kind (the number of ways to spread $\nu_{r}$ reads, $\nu_{rA}+\nu_{rR}$, into $\nu_{C}$ nonempty subsets from $\pi$ independent samples).\\
+%\noindent where $S(\nu_{r},\nu_{C})$ are the Stirling numbers of the second kind (the number of ways to spread $\nu_{r}$ reads, $\nu_{rA}+\nu_{rR}$, into $\nu_{C}$ nonempty subsets from $\pi$ independent samples) and being $\nu_{C}$ no smaller than $\nu_{rA}>0 + \nu_{rR}>0$. $\nu_{CR}$ is  $\nu_{C}-\nu_{CA}$.\\
+
+%\noindent The first term  of equation \ref{double.combinatorics} is conditioned on $\nu_{CR}$ because $\nu_{CA} + \nu_{CR}$ can not be larger than the minimum of $(p,n_r=n_{rA}+n_{rR})$. Additionally,  $\nu_{CA}$ cannot be larger than $p-\pi_r$. Then, the first term can be simply obtained by dividing this term by all the possible states:
+%\begin{equation}
+%\begin{split}
+% P(\nu_{CA} | \nu_{CR}, p-\pi_r, \nu_{rA}) = \\ \frac{P(\nu_{CA} | p-\pi_r, \nu_{rA})}{\sum_{i=0}^{min(p-\pi_r,min(p,n_r)-\nu_{CR})}P(i | p-\pi_r, \nu_{rA})}
+% \label{double.cond.combinatorics}
+%\end{split}
+%\end{equation}
+
+\noindent In case of having a large ploidy and/or large $n_r$, (\textit{i.e.}, total reads larger than 100) the calculation of combinatorics becomes unfeasible for calculating exactly the Stirling numbers of the second kind. %For those cases, an approach is computed using Monte Carlo simulations. A number of iterations (\textit{e.g.},5e2) sample individuals from the entire chromosome pool (ploidy) to obtain the approximated probability distribution of the total number of different chromosomes, that is, the $P(\nu_C|\pi,\nu_r)$ and thus all the necessary probabilities from combinatorics. 
+For larger numbers% (>500)
+, the average effective number of samples is estimated and fixed with probability 1. The estimated effective number of samples is \citep{Ferretti:2018aa}:
+\begin{equation}
+\begin{split}
+E(\nu_{CA}) = \pi_a \left[1 - \left(1 - \frac{1}{\pi_a}\right)^{\nu_{rA}}\right]\\
+\label{mean_contributed}
+\end{split}
+\end{equation}
+
+%\noindent In case considering tetra-variant positions all four nucleotides are considerd instead of two.%:
+
+%
+%\begin{equation}
+%\begin{split}
+%P(\nu_{CAs},n_{CCs},n_{CGs},n_{CTs} | p_{As},p_{Cs},p_{Gs},p_{Ts}, \nu_{\xi{As}}, \nu_{\xi{Cs}}, \nu_{\xi{Gs}}, \nu_{\xi{Ts}} , n_{rAs},n_{rCs},n_{rGs},n_{rTs},\xi,\theta) = \\ %
+%\frac{\frac{p_{As}!}{(p_{As}-\nu_{CAs})!} S(n_{rAs}-\nu_{\xi{As}}+\nu_{\xi{\bar{As}}},\nu_{CAs})}{(p_{As})^{n_{rAs}-\nu_{\xi{As}}+\nu_{\xi{\bar{As}}}}} %
+%\frac{\frac{p_{Cs}!}{(p_{Cs}-n_{CCs})!} S(n_{rCs}-\nu_{\xi{Cs}}+\nu_{\xi{\bar{Cs}}},n_{CCs})}{(p_{Cs})^{n_{rCs}-\nu_{\xi{Cs}}+\nu_{\xi{\bar{Cs}}}}} \cdot \\ %
+%\frac{\frac{p_{Gs}!}{(p_{Gs}-n_{CGs})!} S(n_{rGs}-\nu_{\xi{Gs}}+\nu_{\xi{\bar{Gs}}},n_{CGs})}{(p_{Gs})^{n_{rGs}-\nu_{\xi{Gs}}+\nu_{\xi{\bar{Gs}}}}} %
+%\frac{\frac{p_{Ts}!}{(p_{Ts}-n_{CTs})!} S(n_{rTs}-\nu_{\xi{Ts}}+\nu_{\xi{\bar{Ts}}},n_{CTs})}{(p_{Ts})^{n_{rTs}-\nu_{\xi{Ts}}+\nu_{\xi{\bar{Ts}}}}}.
+%\end{split}
+%\end{equation}
+%\noindent $\nu_{\xi{\bar{As}}}$ indicates the number of errors that are not-As that mutate to As. The same is for the rest of nucleotides.
+
+\ifdraft
+\subsection{Estimating the sample frequency}
+
+The second term probability of the equation \ref{main.equation} can be calculated inverting the observed values in the conditional expression. That is:
+
+\begin{equation}
+\begin{split}
+P(\pi_r | \nu_{\xi_{A}}, \nu_{\xi_{R}}, \nu_{\xi_{\xi{A}}}, \nu_{\xi_{\xi{R}}}, n_{rR},n_{rA},n_{r\xi},\xi_A,\xi_R, \xi_\xi,\theta,p) %
+%= P(n_{rR},n_{rA} | \pi_r, \nu_{\xi_{A}}, \nu_{\xi_{R}},\xi,\theta,p) \cdot\\ P(\pi_r | \nu_{\xi_{A}}, \nu_{\xi_{R}},\xi,\theta,p) \cdot\\P(\nu_{\xi_{A}}, \nu_{\xi_{R}} | \xi,\theta,p) \cdot\\P(\xi) P(\theta) P(p) \cdot\\ \frac{1}{P(\nu_{\xi_{A}}, \nu_{\xi_{R}}, n_{rR},n_{rA},\xi,\theta,p)} %
+%= \\ P(n_{rR},n_{rA} | \pi_r, \nu_{\xi_{A}}, \nu_{\xi_{R}},\xi,\theta,p) P(\pi_r | p, \theta) P(\nu_{\xi_{A}}, \nu_{\xi_{R}} | \xi) P(\xi) P(\theta) P(p) \cdot \\  \frac{1}{P(n_{rR},n_{rA} | \nu_{\xi_{A}}, \nu_{\xi_{R}},\xi,\theta,p) P(\nu_{\xi_{A}}, \nu_{\xi_{R}} | \xi) P(\xi) P(\theta) P(p)} % 
+%= \\ \frac{P(n_{rR},n_{rA} | \pi_r, \nu_{\xi_{A}}, \nu_{\xi_{R}},\xi,\theta,p)}{P(n_{rR},n_{rA} | \nu_{\xi_{A}}, \nu_{\xi_{R}},\xi,\theta,p)} %
+= \\ \frac{P(n_{rR},n_{rA} | \pi_r,n_{r\xi}, \nu_{\xi_{A}}, \nu_{\xi_{R}}, \nu_{\xi_{\xi{A}}}, \nu_{\xi_{\xi{R}}},\xi_A,\xi_R, \xi_\xi,\theta,p)P(\pi_r | p, \theta) }{\sum_{\pi_{Ri}=0}^{\pi_{Ri}=p}{P(n_{rR},n_{rA} | \pi_{Ri},n_{r\xi} , \nu_{\xi_{A}}, \nu_{\xi_{R}}, \nu_{\xi_{\xi{A}}}, \nu_{\xi_{\xi{R}}},\xi_A,\xi_R, \xi_\xi,\theta,p)P(\pi_{Ri} | p, \theta)}}.
+\end{split}
+\end{equation}
+\noindent $P(n_{rR},n_{rA} | \pi_r,n_{r\xi} , \nu_{\xi_{A}}, \nu_{\xi_{R}}, \nu_{\xi_{\xi{A}}}, \nu_{\xi_{\xi{R}}},\xi_A,\xi_R, \xi_\xi,\theta,p) = \\ P(n_{rA}-\nu_{\xi_{A}}+\nu_{\xi_{R}}+ \nu_{\xi_{\xi{A}}}, n_{rR}-\nu_{\xi_{R}}+\nu_{\xi_{A}}+\nu_{\xi_{\xi{R}}} | \pi_r, \nu_{\xi_{A}}, \nu_{\xi_{R}}, \nu_{\xi_{\xi{A}}}, \nu_{\xi_{\xi{R}}},\xi_A,\xi_R, \xi_\xi,\theta,p) =  P(\nu_{rA},\nu_{rR} | \pi_r, \nu_{\xi_{A}}, \nu_{\xi_{R}}, \nu_{\xi_{\xi{A}}}, \nu_{\xi_{\xi{R}}},\xi_A,\xi_R, \xi_\xi,\theta,p)$ may be approximated by a binomial:
+\begin{equation}
+\begin{split}
+P(\nu_{rA},\nu_{rR} | \pi_r,n_{r\xi}, \nu_{\xi_{A}}, \nu_{\xi_{R}}, \nu_{\xi_{\xi{A}}}, \nu_{\xi_{\xi{R}}},\xi_A,\xi_R, \xi_\xi,\theta,p) = \\ \frac{n_{r}!}{\nu_{rR}!\nu_{rA}!} \left(\frac{\pi_r}{p}\right)^{\nu_{rR}} \left(1-\frac{\pi_r}{p}\right)^{\nu_{rA}}.
+\end{split}
+\end{equation}
+\noindent $P(\pi_r | p, \theta)$ can be estimated assuming a SNM model as a prior (see next subsection). \\
+
+%\noindent In case considering tetra-variant positions a multinomial may be used instead.%:
+
+%\begin{equation}
+%\begin{split}
+%P(n_{rAs},n_{rCs},n_{rGs},n_{rTs} | \pi_a,\pi_C,\pi_G,\pi_T, \nu_{\xi_{A}}, \nu_{\xi{C}}, \nu_{\xi{G}}, \nu_{\xi{T}},\xi,\theta,p) =  \\ %
+%\frac{n_r!}{(n_{rAs}-\nu_{\xi{As}}+\nu_{\xi{\bar{As}}})!(n_{rCs}-\nu_{\xi{Cs}}+\nu_{\xi{\bar{Cs}}})!(n_{rGs}-\nu_{\xi{Gs}}+\nu_{\xi{\bar{Gs}}})!(n_{rTs}-\nu_{\xi{Ts}}+\nu_{\xi{\bar{Ts}}})!} \cdot \\ %
+%(\frac{\pi_a}{p})^{(n_{rAs}-\nu_{\xi{As}}+\nu_{\xi{\bar{As}}})} (\frac{\pi_C}{p})^{(n_{rCs}-\nu_{\xi{Cs}}+\nu_{\xi{\bar{Cs}}})} (\frac{\pi_G}{p})^{(n_{rGs}-\nu_{\xi{Gs}}+\nu_{\xi{\bar{G}}})} (\frac{\pi_T}{p})^{(n_{rTs}-\nu_{\xi{Ts}}+\nu_{\xi{\bar{Ts}}})}.
+%\end{split}
+%\end{equation}
+\noindent In case using large pool sizes, we will only analyze a number (say hundred) of frequency values distributed from the total pool size ($p$). 
+
+\subsubsection{The SNM as the prior frequency for the whole sample:}
+We consider the calculation of $P(\pi_r | p,\theta)$ assuming the SNM and a given variability value, although it is possible consider other a priori conditions. %
+The probability of having a given sample frequency may be assumed as the theoretical SFS under the stationary Standard Neutral Model  (SNM). Thus:
+
+\begin{equation}
+    P(\pi_r | \theta,p) =  
+\begin{cases}
+    \theta a_{p} \frac{1/\pi_r}{a_{p}} = \theta/\pi_r & \textrm{ if $p > \pi_r > 0$} \\
+    1-\theta a_{p} & \textrm{ otherwise}
+\end{cases}
+\end{equation}
+\noindent if the ancestral variant is known. Here $a_{p} = \sum_{i=1}^{i=p-1}{1/i}$ and $\theta \ll1$. For large pool sizes we approximate $a_p\simeq 0.578 + log(p-1)$.
+
+\noindent In case considering two or more variants per position, each probability for each derived variant is calculated separately and combined to obtain the prior. For two variants, the probability is very similar as the above but counting the mutations that can fall on the same branch but counting the possibility to have only two variants with two or three mutations:
+\begin{equation}
+P(\pi_{R_{anc}},\pi_{R_{2}},\pi_{R_{3}}=0,\pi_{R_{4}}=0 | p,\theta) =  \frac{\theta}{\pi_{R_{2}}} +  \frac{\theta^2}{\pi_{R_{2}}^2} + \frac{\theta^3}{\pi_{R_{2}}^3} \simeq \frac{\theta}{\pi_{R_{2}}}.
+\end{equation}
+%\noindent For three variants ($v=3$, that is the ancestral variant $\pi_{R_{anc}}$ plus two derived $\pi_{R_{2}}$ and $\pi_{R_{3}}$) we count that the second derived variant can increase over the ancestral or over the first derived variant:
+%\begin{equation}
+%\begin{split}
+%P(\pi_{R_{anc}}, \pi_{R_{2}},\pi_{R_{3}},\pi_{R_{4}}=0| p,\theta) = \frac{\theta}{\pi_{R_{2}}}\frac{\theta}{\pi_{R_{3}}} +\frac{\theta}{\pi_{R_{2}}+\pi_{R_{3}}} (\frac{\theta}{\pi_{R_{2}}} + \frac{\theta(1-\delta_{\pi_{R_{3}},\pi_{R_{2}}})}{\pi_{R_{3}}}) + \\ \frac{\theta^2}{\pi_{R_{2}}^2}\frac{\theta}{\pi_{R_{3}}} + \frac{\theta}{\pi_{R_{2}}}\frac{\theta^2}{\pi_{R_{3}}^2} + \frac{\theta^2}{(\pi_{R_{2}}+\pi_{R_{3}})^2} (\frac{\theta}{\pi_{R_{2}}}+ \frac{\theta(1-\delta_{\pi_{R_{3}},\pi_{R_{2}}})}{\pi_{R_{3}}}) \simeq \\ \frac{\theta^2}{\pi_{R_{2}}\pi_{R_{3}}} +\frac{\theta^2}{\pi_{R_{2}}+\pi_{R_{3}}} (\frac{1}{\pi_{R_{2}}} + \frac{1-\delta_{\pi_{R_{3}},\pi_{R_{2}}}}{\pi_{R_{3}}}),
+%\end{split}
+%\end{equation}
+%\noindent where $(1-\delta_{\pi_{R_{3}},\pi_{R_{2}}})$ =  1 if $\pi_{R_{3}} = \pi_{R_{2}}$, otherwise is 0.
+
+%\noindent For four variants ($v=4$, three derived), we have one additional combination:
+
+%\begin{equation}
+%\begin{split}
+%P(\pi_{R_{anc}}, \pi_{R_{2}},\pi_{R_{3}},\pi_{R_{4}}| p,\theta) = \frac{\theta}{\pi_{R_{2}}}\frac{\theta}{\pi_{R_{3}}}\frac{\theta}{\pi_{R_{4}}} + \\ \frac{\theta}{p-\pi_{R_{anc}}} \sum_{i=2}^{v} P(\pi_{R_{i}}, \pi_{R_{j \neq i}},\pi_{R_{k \neq i,j}}| \pi_{R},\theta)
+%\end{split}
+%\end{equation}
+
+\noindent For monomorphic positions, the probability would be  one minus the probabilities of having %two, three or four 
+variants, which is approximately: 
+\begin{equation}
+\begin{split}
+P(\pi_{R_{anc}}, \pi_{R_{2}}=0,\pi_{R_{3}}=0,\pi_{R_{4}}=0 | p,\theta) \simeq 1- \theta a_{p}
+\end{split}
+\end{equation}
+\noindent  If the derived variant is unknown (no ancestral variant or outgroup is available) and considering no more than two variants, the prior probability would be calculated as:
+\begin{equation}
+P_n(f_r, | p,\theta) =  
+\begin{cases}
+{\theta}\left(\frac{1}{f_r,}+\frac{1-\delta_{f_r,p-f_r,}}{p-f_r,}\right) & \textrm{if $p > f_r, > 0$}\\
+1-\theta a_{p} & \textrm{ otherwise},
+\end{cases}
+\end{equation}
+where $f_r,$ is the frequency of the minor allele, $\delta_{f_r,p-f_r,}$ =  1 if $f_r, = p-f_r,$, otherwise is 0. Note the subindex in  the probability ($P_n$) to differentiate this probability with the probability calculated considering the ancestral variant.\\
+
+\noindent In case of considering two or more variants, and if the derived variant is unknown (no outgroup), combine all possible ancestralities to obtain the prior probability at this position. For two variants:
+\begin{equation}
+\begin{split}
+P_n(\pi_{R_{1}},\pi_{R_{2}},\pi_{R_{3}}=0,\pi_{R_{4}}=0 | p,\theta) =  {\theta}\left(\frac{1}{\pi_{R{2}}}+\frac{1-\delta_{\pi_{R_{2}},\pi_{R{1}}}}{\pi_{R_{1}}}\right) +\\  {\theta^2}\left(\left(\frac{1}{\pi_{R{2}}}\right)^2+\left(\frac{1-\delta_{\pi_{R_{2}},\pi_{R{1}}}}{\pi_{R_{1}}}\right)^2\right) +\\  {\theta^3}\left(\left(\frac{1}{\pi_{R{2}}}\right)^3+\left(\frac{1-\delta_{\pi_{R_{2}},\pi_{R{1}}}}{\pi_{R_{1}}}\right)^3\right) \simeq  \\ {\theta}\left(\frac{1}{\pi_{R{2}}}+\frac{1-\delta_{\pi_{R_{2}},\pi_{R{1}}}}{\pi_{R_{1}}}\right),
+\end{split}
+\end{equation}
+\noindent where $\pi_{R_{1}}$ is the variant at higher frequency.
+
+%\noindent For three variants and no outgroup ($v=3$) we consider all the possible ancestralities using the probabilities obtained when the ancestral variant is known:
+%\begin{equation}
+%P_n(\pi_{R_{1}}, \pi_{R_{2}},\pi_{R_{3}},\pi_{R_{4}}=0| p,\theta) = \sum_{i=1}^{v}P(\pi_{R_{i}}, \pi_{R_{j \neq i}},\pi_{R_{k \neq i,j}}| p,\theta),
+%\end{equation}
+%\noindent where the frequency value of each variant is less or equal to half of the sample size ($p$). For four variants and no outgroup ($v=4$):
+%\begin{equation}
+%P_n(\pi_{R_{1}}, \pi_{R_{2}},\pi_{R_{3}},\pi_{R_{4}}| p,\theta) = \sum_{i=1}^{v}P(\pi_{R_{i}}, \pi_{R_{j \neq i}},\pi_{R_{k \neq i,j}},\pi_{R_{h \neq i,j,k}}| p,\theta) 
+%\end{equation}
+
+\noindent For monomorphic positions, the probability would be  one minus the probabilities of having %two, three or four 
+variants, which is again approximately \\
+\begin{equation}
+\begin{split}
+P_n(\pi_{R_{1}}, \pi_{R_{2}}=0,\pi_{R_{3}}=0,\pi_{R_{4}}=0| p,\theta) \simeq 1- \theta a_{p}
+\end{split}
+\end{equation}
+
+%The prior can be extended to transitions and transversions (?or even to ancient DNA, adding the prior for a type of transversions near to the extremes of broken DNA?).
+
+\subsubsection{Alternative priors: the Exponential model and the Uniform distribution:}
+\noindent The exponential model is a convenient model in case of using pools that have experimented a fast growth, such as a bacterial growth colony, infection process or cancer cell expansion. In such cases the prior used considering no more than two variants is (\citealp{Ohtsuki:2017aa}):
+
+\begin{equation}
+    P(\pi_r | \theta,p) =  
+\begin{cases}
+    \theta/(\pi_r(\pi_r+1)) & \textrm{ if $p > \pi_r > 0$} \\
+    1-\theta a_{e} & \textrm{ otherwise}
+\end{cases}
+\end{equation}
+\noindent if the ancestral variant is known. Here $a_{e} = \sum_{i=1}^{i=p-1}{1/(i(i+1))}$ and $\theta \ll1$. For large values we approximate $a_e\simeq 1 + log(p-1) - log(p)$.
+
+\noindent  If the derived variant is unknown (no ancestral variant or outgroup is available) and considering no more than two variants, the prior probability would be calculated as:
+\begin{equation}
+P_n(f_r, | p,\theta) =  
+\begin{cases}
+{\theta}\left(\frac{1}{(f_r,(f_r,+1))}+\frac{1-\delta_{f_r,p-f_r,}}{(p-f_r,)(p-(f_r,+1))}\right) & \textrm{if $p > f_r, > 0$}\\
+1-\theta a_{e} & \textrm{ otherwise},
+\end{cases}
+\end{equation}
+
+\noindent If the user does not want to consider informative priors and prefer to use a flat distribution with equal probabilities to each frequency, a uniform distribution is considered. Considering no more than two variants:
+
+\begin{equation}
+    P(\pi_r | \theta,p) =  
+\begin{cases}
+    \theta/(p-1) & \textrm{ if $p > \pi_r > 0$} \\
+    1-\theta & \textrm{ otherwise}
+\end{cases}
+\end{equation}
+\noindent if the ancestral variant is known and: 
+\begin{equation}
+P_n(f_r, | p,\theta) =  
+\begin{cases}
+{\theta}(\frac{1}{p-1}+\frac{1-\delta_{f_r,p-f_r,}}{p-1)}) & \textrm{if $p > f_r, > 0$}\\
+1-\theta & \textrm{ otherwise},
+\end{cases}
+\end{equation}
+
+\subsubsection{Estimation of the levels of variability from the observed data:}
+
+\noindent The expected number of invariant positions considering that all observed variants are produced by sequence errors (\textit{i.e.}, monomorphic population) is:
+\begin{equation}
+\begin{split}
+E(n_{p_{0\xi}}) = \sum_{i=1}^{np}\prod_{j=1}^{n_{ri}}(1-\xi_{ij}).
+\end{split}
+\end{equation}
+If we consider population variability in the sample, the expected number of invariant positions is reduced by the number of segregating sites:
+\begin{equation}
+\begin{split}
+E(n_{p_{0}}) \simeq E(n_{p_{0\xi}}) - E({S}).
+\end{split}
+\label{np0V}
+\end{equation}
+$E({S}) = \theta \sum_{i=1}^{n_p}c_{n_{Ci}}$ is the expected number of segregating sites and $c_{n_{C}} = a_{n_{C}}$ for the SNM, $c_{n_{C}} = \sum_{i=1}^{n_{C}-1}\frac{1}{i(i+1)}$ for the exponential expansion model and $c_{n_{C}} = n_{C}-1$ for a flat distribution (note that this expression does not count the number of segregating sites falling on a position with an error, which is considered a very low probability). The expected number of variant positions is $E(n_{p_{V}}) = n_p - E(n_{p_{0}})$ and can be used to calculate the adjusted error rate (in contrast to equation \ref{omega_empirical}) for each error term in variant positions, here assuming a specific population scenario and accurate sequence error probabilities:
+\begin{equation}
+\begin{split}
+{\omega_e} =  \frac{E(n_{\xi_{T}})}{E(n_{p_{V}}) \frac{E(n_{\xi_{T}})}{n_p}} = \frac{n_p}{E(n_{p_{V}})},
+\end{split}
+\end{equation}
+that is, the expected number of read errors divided by the expected number of read errors in variant positions.\\
+
+\noindent Furthermore, the equation \ref{np0V} can also be employed to estimate the $\theta$ population variability parameter using the empirically observed invariant positions ($n_{p0}$): \\
+\begin{equation}
+\begin{split}
+\widehat{\theta} = \frac{E(n_{p_{0\xi}}) - n_{p_{0}}}{\sum_{i=1}^{n_p}c_{n_{Ci}}}.
+\end{split}
+\end{equation}
+
+\noindent Remember that all this above approach is based on a relative low number of reads and a small error rate. It would be recommendable to use at least a minimum sequence error rate one order of magnitud smaller than the inverse number of reads. In the following text we use the sequencing error expressions $\xi_R$ and $\xi_A$, although it is convenient to replace them by $\xi_{RV}$ and $\xi_{AV}$ for variant positions. %
+For the implementation of the algorithm, the empirical corrected error rate (that is $\omega$ and not $\omega_e$) is used. %
+
+\fi
+
+\subsection{Sequencing error}
+
+%CONSIDER THE PROBLEM OF HAVING error/3 WHEN IS POLYMORPHIC (MORE THAN TWO ALTERNATIVE READS) BUT error/1 WHEN THERE IS ONE ALTERNATIVE READ!
+\par
+
+\noindent The sequencing error term ($\xi$) indicates the probability of a wrong classification of an observed read% (\textit{e.g.,}  $\xi=P(\widetilde{A}|\overline{A})$, where $\widetilde{A}$ indicates we observed an "A" nucleotide, and  $\overline{A}$ indicates that the true nucleotide is "non-A"). %
+. Sequencing platforms provide an error term for each of the sequenced reads  (Phred score error).  This value is an approximate value and may be not accurate.
+
+\subsubsection{Estimating the read sequencing error from the whole dataset:}
+\noindent We propose two different approaches to estimate the number of sequencing errors per position. In case we have enough sequencing information it is possible to estimate the sequencing error rate ($\xi$) per position, instead of assuming the given phred scores values. \cite{Lynch:2014aa} developed a maximum likelihood (ML) algorithm to estimate the sequencing error rate and the frequency of the alleles at each position, under the assumption of having population sequences with no more than biallelic variants and also assuming equal ratio of error for all four nucleotides. In this algorithm, the probability to observe a reference, alternative and error allele read ($\phi_R$,$\phi_A$ and $\phi_\xi$, respectively), assuming two real alleles at the given position, is \citep{Lynch:2014aa}:
+
+\begin{equation}
+\begin{split}
+&\phi_R = \frac{\pi_r}{p} (1-\xi)+(1-\frac{\pi_r}{p})\frac{\xi}{3}, \\
+&\phi_A = \frac{\pi_a}{p} (1-\xi)+(1-\frac{\pi_a}{p})\frac{\xi}{3}, \\
+&\phi_\xi =\frac{2\xi}{3}.
+\end{split}
+\label{lynch14}
+\end{equation}
+ 
+%\noindent where $\pi_a = p - \pi_r$ is the real sample frequency of the alternative allele.
+\noindent The likelihood function for real polymorphic positions is \citep{Lynch:2014aa}:
+\begin{equation}
+\begin{split}
+L \propto \phi_R^{n_{rR}} \phi_A^{n_{rA}} \phi_\xi^{n_{r\xi}}
+\end{split}
+\end{equation}
+ 
+\noindent and an error estimate can be obtained from tri/tetra-allelic positions. The ML estimate of error rate is %
+%and frequency %
+ obtained by deriving $L$ with respect $\xi$ and equaling to zero: 
+ \citep{Lynch:2014aa}:
+\begin{equation}
+\begin{split}
+\widehat{\xi} = \frac{3 n_{r\xi}/n_r}{2}.\\
+%\widehat{\pi_r} = \frac{\frac{n_{rR}}{n_{rR}+n_{rA}}[1-\frac{2\widehat{\xi}}{3}]-\frac{\widehat{\xi}}{3}}{1-\frac{4\widehat{\xi}}{3}}.
+\end{split}
+\end{equation}
+%\noindent Here, using our notation, $\xi_R=\xi_A=\xi_\xi=\widehat{\xi}/3$.
+\noindent It is important to exclude highly variable regions, such as mutation hotspots or repetitive regions to estimate this error value. Note  that multiple hits are also possible (with an approximated proportion of $(\theta a_n)^2$ per position in the sample). Thus, the estimated error rate per position should be compared with the expected proportion of multiple hits% ($n_r\widehat{\xi} \text{ versus } (\theta a_n)^2)$
+, although it is considered that error rate has a higher order of magnitude (on the order of $\theta$). \par
+
+%\subsubsection{Sequencing error when considering low frequency variants:}
+%\noindent In case of considering low frequency variants, most sequencing errors would probably fall in positions that are really monomorphic (only one allele). In case that a position is really monomorphic (or the subsampling only collected the major allele because the minor has very low frequency), the probability of having the first error to apparently an alternative allele is $\xi$ and not $2\xi/3$, because any different nucleotide would be considered alternative.
+
+\subsubsection{Assuming as error ratio prior the phred score error values:}
+\noindent Instead, if we have no enough information to estimate the sequencing error from the sequence dataset (that is, not enough 'third' alleles), we may assume that the Phred score supplied by any sequencing platform is enough accurate to estimate the number of sequencing errors. In biallelic variants, if the $p$-value from the Phred score is $\epsilon$, we can estimate the error using the approach indicated in \cite{Raineri:2012aa}: %
+% Under these assumptions, the estimation of $\pi_r=P(R)$ and $\pi_a=P(A)$ is obtained following the next reasoning: we translate the sequencing errors into probabilities in the following way:
+\begin{equation}
+\begin{split}
+&P(\nu_A|n_A)=1-\epsilon_A \textrm{ , } P(\nu_R|n_A)=\epsilon_A, \\
+&P(\nu_R|n_R)=1-\epsilon_R \textrm{ , } P(\nu_A|n_R)=\epsilon_R, \\
+\textrm{ and } \\
+&P(n_A|\nu_A)=1-\frac{\epsilon_R(1-2\epsilon_A)}{1-\epsilon_A-\epsilon_R} = 1-\xi_A, \\
+&P(n_R|\nu_A)=\frac{\epsilon_R(1-2\epsilon_A)}{1-\epsilon_A-\epsilon_R} = \xi_A, \\
+&P(n_R|\nu_R)=1-\frac{\epsilon_A(1-2\epsilon_R)}{1-\epsilon_A-\epsilon_R} =1- \xi_R, \\
+&P(n_A|\nu_R)=\frac{\epsilon_A(1-2\epsilon_R)}{1-\epsilon_A-\epsilon_R} = \xi_R. \\
+\end{split}
+\end{equation}
+
+%Under the assumption that the sequencing errors are generated following a %
+%Binomial distribution (or a Poisson, in case that $n_{r}$ is large and $\xi$ is small)%
+%%negative Binomial distribution% 
+%, the expected number of wrong classified reads is  $n_{\xi_{T}}=n_{rT} \cdot \xi$, where $n_{rT}$ is the total number of reads analyzed. If we accept different error rates per position and read, then $n_{\xi_{T}}=\sum_{i}^{n_p}\sum_{j}^{n_{ri}}\xi_{ij}$, where $n_p$ is the total number of positions analyzed, $n_{ri}$ is the number of reads in position $i$ and $\xi_{ij}$ is the sequencing error value of the read $j$ at position $i$.\\
+
+%\noindent If we consider a population dataset with no variability, all observed differences would given by the wrong classification of reads. Assuming that the sequencing error is low, we can observe a large number of positions (each one having a number of reads) with no differences within reads, while a number of positions contains differences within. %The wrong classified reads will be concentrated on variant positions, while non-variant positions will be free of wrong classified reads. 
+%That is, all the $n_{\xi_{T}}$ of wrong classified reads are in the observed variant positions. From this reasoning, we can modify the sequencing error term in reads located in variant positions considering that a large number of positions are free of wrong classified reads.
+%\begin{equation}
+%\begin{split}
+%\omega \sum_{i}^{n_{pV}}\sum_{j}^{n_{ri}}\xi_{ij} = \sum_{i}^{n_p}\sum_{j}^{n_{ri}}\xi_{ij} = E(n_{\xi_{T}}),
+%%(\sum_{i}^{n_p}\sum_{j}^{n_{ri}}\xi_{ij} - \sum_{i}^{n_{p0}}\sum_{j}^{n_{ri}}\xi_{ij}) \omega = \sum_{i}^{n_p}\sum_{j}^{n_{ri}}\xi_{ij} = n_{\xi_{T}},\\
+%\label{omega_empirical}
+%\end{split}
+%\end{equation}
+%where $n_{pV}$ are all positions having variant reads.
+%%and considering that the probability of having a wrong classification is conditioned to the frequency of no observing sequence errors along the genome (which is obtained by looking at positions where all reads are equal; this is not indicating that in these positions there is no error, but the probability is orders of magnitude lower). In case the variant positions are much lower than one per position, this approach can help to estimate more accurately the probability of error of positions having variants. That is, the probability of error per read, once we now that a number of positions have no errors, is calculated assuming  that the average from the whole genome is $\lambda = n_{rT} \cdot \xi$, where $n_{rT}$ is the total number of reads analyzed, and once we now that $n_{rT0}$ reads are in invariant positions. 
+%The adjusted error rate for each error term in variant positions is $\xi_{Vij} = \xi_{ij} \cdot \omega$, where $\omega = \frac{\sum_{i}^{n_p}\sum_{j}^{n_{ri}}\xi_{ij}}{\sum_{i}^{n_{pV}}\sum_{j}^{n_{ri}}\xi_{ij}}$, while the corrected error rate in invariant positions ($\xi_{0ij}$) would be zero. Note that this approach is only useful for moderate read depth values (otherwise invariant positions will never be found).\\
+
+%%In case considering that all error rates are equal and the number of reads equal per position, the number of expected positions with at least one error would be $n_p (1 - (1-xi_{ij})^{n_{r}}) \simeq np(1 - (1 - n_{r}\xi)) = n_p n_r \xi. $
+
+%%\noindent  If we want to consider the different rate of sequencing errors, the value of $\xi_0$ is modified according to the value of $\xi$. We approximate the $\xi_0$ value for each $\xi$ in the following way: the probability to have a correct classification of all reads in a position with $n_r$ reads is $(1-\xi)^{n_{r}}$ according to a binomial distribution. The mean number of reads in a position with no errors would be $n_{r0}=(1-\xi)^{n_{r}} \cdot n_r$. Then, $\xi_0=\frac{n_r}{n_r- n_r (1-\xi)^{n_r}}\xi = \frac{\xi}{1-(1-\xi)^{n_r}}$. If we consider that $\xi$ is small and $n_r$ is not too  large, $(1-\xi)^{n_r} \simeq 1 - n_r \cdot \xi$ and $\xi_0 \simeq 1/n_r$, %
+%%that is, it is expected one error for any no-monomorphic position %(after eliminating those reads below the $\xi$ threshold) 
+%in moderate read depth datasets, whatever sequence error threshold is considered (which is expected assuming an invariant sample, all variant positions are from sequencing errors). \\
+
+%%\noindent If we consider the existence of population variability, two additional considerations modify this scenario: (i) the probability of having invariant positions -- that were initially a variant position but now have reads wrongly classified -- is not zero, but the probability is very low (on the order of $\xi \cdot \theta$, which is orders of magnitude lower that the variability level); (ii) the number of reads with correct classification in a given position ($n_{r0}$) is reduced in a constant value (given by the population variability), whatever is the sequence error considered. The proportion of positions with segregating sites per position in the population is $S=\theta \cdot a_{n_{C}}$, assuming the Stationary Neutral Model (SNM) and considering the number of contributed samples ($n_C$, which can be obtained using the equation \ref{simple.combinatorics}). The mean number of reads in a position with no variants would be $n_{r0} \simeq n_r [(1-\xi)^{n_r} - \theta c_{n_{C}}]$, where $c_{n_{C}} = a_{n_{C}}$ for the SNM, $c_{n_{C}} = \sum_{i=1}^{n_{C}-1}\frac{1}{i(i+1)}$ for the exponential expansion model and $c_{n_{C}} = n_{C}-1$ for a flat distribution. The $n_{r0}$ expression may also be employed to estimate the global $\theta$ parameter (from the empirical $n_{rT}$ and $n_{r0T}$ values) and use as a prior for the analysis:
+%%\begin{equation}
+%%\begin{split}
+%%\hat{\theta} \simeq \frac{{n_{rT}}{}(1-{\frac{n_{rT}}{L}} \cdot \xi_g)-{{n_{rT0}}{}}}{{\sum_{i=0}^{L} c_{n_{C_i}}}{}},
+%%\hat{\theta} \simeq \frac{L-n_{rT} \cdot \xi_g - \frac{n_{rT0}}{n_{rT}L}}{\sum_{i=1}^{L} c_{n_{C_i}}},
+%%\end{split}
+%%\end{equation}
+%%\noindent where $L$ is the total number of counted positions and $\xi_g$ is the geometrical mean of sequencing errors. The corrected sequence error for each variant position considering population variability is:
+%%\begin{equation}
+%%\begin{split}
+%% \xi_0 \simeq \frac{\xi}{n_r \cdot \xi +  \theta \cdot c_{n_{C}}}.
+%% \end{split}
+%%\end{equation}
+
+%%Following \cite{Raineri:2012aa}, w%
+%\noindent Under these assumptions, the estimation of $\pi_r=P(R)$ and $\pi_a=P(A)$ is obtained following the next reasoning: we translate the sequencing errors into probabilities in the following way:
+%\begin{equation}
+%\begin{split}
+%P(\widetilde{R}|A)=\xi_R, \\
+%P(\widetilde{A}|R)=\xi_A,  \\
+%P(\widetilde{\xi}|A) + P(\widetilde{\xi}|R) = 2P(\widetilde{\xi}|(A,R)) = \xi_{\xi},  
+%\end{split}
+%\end{equation}
+%\noindent where $P(\widetilde{A}|R)$ means the probability to observe an alternative ($\widetilde{A}$) read when the true value is a reference ($R$) read. Given that $P(\widetilde{A}|R) + P(\widetilde{R}|R)+P(\widehat{\xi}|R)=1$, then $P(\widetilde{R}|R)=1-\xi_A-\xi_{\xi}/2$ and $P(\widetilde{A}|A)=1-\xi_R-\xi_{\xi}/2$, assuming equal probability of observing a third nucleotide (sequence error in bivariant positions) whatever be Ancestral or Reference original allele. The probability of observing an alternative read is $P(\widetilde{A}) = P(\widetilde{A} \bigcap A) + P(\widetilde{A} \bigcap R) + \cancel{P(\widetilde{A} \bigcap \xi)}= P(\widetilde{A}|A)P(A)+P(\widetilde{A}|R)P(R)$, from where we can estimate the average frequency of having a real alternative read as $\pi_a={P(A)}=\frac{P(\widetilde{A})-P(\widetilde{A}|R)}{P(\widetilde{A}|A)-P(\widetilde{A}|R)} = \frac{n_{rA}/n_r-\xi_A}{1-\xi_A-\xi_R-\xi_{\xi}/2}$. This estimation can be higher than 1 or lower than 0 in some occasions, depending on the number of reads and the probabilities of error. Therefore, this estimation is trimmed to the $max(0,min(P(A),1))$ to maintain this within these limits. 
+\subsubsection{Estimating the number of sequencing errors per position:}
+\noindent The estimate of the number of sequencing errors is obtained from the second term of the equation~\ref{main.equation}. These probabilities can be calculated with two independent binomials and using the probabilities from equations~\ref{lynch14}. 
+\begin{equation}
+\begin{split}
+P(\nu_{\xi_{A}} &, \nu_{\xi_{R}} | \pi_a,f_r,n_{rR},n_{rA},n_{r\xi},\xi,\theta,p) = \\
+&P(\nu_{\xi_{A}} | \pi_a, n_{rA},\xi,p) \cdot  P(\nu_{\xi_{R}} | \pi_a, n_{rR},\xi,p). \\
+\end{split}
+\end{equation}
+Note that in case the allele $a$ is not present whatever error to  non-reference nucleotides can be considered as an alternative allele. That means that in case that the number of errors is equal to the number of alternative alleles, the probability to observe the first different allele from reference is not $\phi_A$ but $\phi_{\overline{R}}$ (not reference). Therefore, we have two different calculations for $\nu_{\xi_A}=n_{rA}$ and for $0<\nu_{\xi_A}<n_{rA}$. For $\nu_{\xi_A}=0$, this probability is calculated from the difference of the sum of the probabilities of all $\nu_{\xi}>1$ to 1.\\
+\begin{equation}
+\begin{split}
+P(\nu_{\xi_{A}} | \pi_a, n_{rA},\xi,p) = 
+\begin{cases}
+{{n_{rA} \choose \nu_{\xi_{A}}} {p_{\nu_{\xi_{A}}}}^{\nu_{\xi_{A}}} {(1-p_{\nu_{\xi_{A}}})}^{(n_{rA}-\nu_{\xi_{A}})}}  &\textrm{ if $0 < \nu_{\xi_A} < n_{rA}$,}\\
+{p_{\nu_{\xi_{1A}}} \cdot {n_{rA}-1 \choose \nu_{\xi_{A}}-1} {p_{\nu_{\xi_{A}}-1}}^{\nu_{\xi_{A}}-1} {(1-p_{\nu_{\xi_{A}}-1})}^{(n_{rA}-\nu_{\xi_{A}})}}  &\textrm{ if $\nu_{\xi_A}=n_{rA}$,}\\
+1-\sum P(\nu_{\xi_{A}}>0| \pi_a, n_{rA},\xi,p) &\textrm{ if $\nu_{\xi_A}=0$,}\\
+\end{cases}
+\end{split}
+\label{probErrorsA}
+\end{equation}
+\noindent where $p_{\nu_{\xi_{A}}} = \frac{(1-\frac{\pi_a}{p})\frac{\xi}{3}}{\frac{\pi_a}{p}(1-\xi)+(1-\frac{\pi_a}{p})\frac{\xi}{3}}$ and $p_{\nu_{\xi_{1A}}} = \frac{(1-\frac{\pi_a}{p}){\xi}}{\frac{\pi_a}{p}(1-\xi)+(1-\frac{\pi_a}{p}){\xi}}$% $p_{\nu_{\xi_{1A}}} = \frac{(1-\frac{\pi_a}{p})\frac{\xi}{3} + \frac{2\xi}{3}}{\frac{\pi_a}{p}(1-\xi)+(1-\frac{\pi_a}{p})\frac{\xi}{3} + \frac{2\xi}{3}}$. 
+.\\
+\\ and  $P(\nu_{\xi_{R}} | \pi_a, n_{rR},\xi,p)$ is obtained using the same calculations than in \ref{probErrorsA}. The probability to have as many errors as reference reads is very low, except if the number of reads is also very low.
+%%{1+\delta_{n_{rA},n_{rA}-\nu_{\xi_{A}}}}%
+%\\Finally: \\<<<<<<<
+%\begin{equation}
+%\begin{split}
+%P(\nu_{\xi_{R}} &| \pi_a, n_{rR},\xi,p) = 
+%\begin{cases}
+%{n_{rR} \choose \nu_{\xi_{R}}} {p_{\nu_{\xi_{R}}}}^{\nu_{\xi_{R}}} {(1-p_{\nu_{\xi_{R}}})}^{(n_{rR}-\nu_{\xi_{R}})} &\textrm{ if $0 < \nu_{\xi_R} < n_{rR}$,}\\
+%p_{\nu_{\xi_{1R}}} \cdot {n_{rR}-1 \choose \nu_{\xi_{R}}-1} {p_{\nu_{\xi_{R}}-1}}^{\nu_{\xi_{R}}-1} {(1-p_{\nu_{\xi_{R}}-1})}^{(n_{rR}-\nu_{\xi_{R}})} &\textrm{ if $\nu_{\xi_R}=n_{rR}$,}\\
+%1-\sum P(\nu_{\xi_{R}}>0 | \pi_a, n_{rR},\xi,p) &\textrm{ if $\nu_{\xi_R}=0$,}\\
+%\end{cases}
+%\end{split}
+%\end{equation}
+%\\
+%\noindent where $p_{\nu_{\xi_{R}}} = \frac{{\pi_a}\frac{\xi}{3}}{{(p-\pi_a}) (1-\xi)+{\pi_a}\frac{\xi}{3}}$ and $p_{\nu_{\xi_{1R}}} = \frac{{\pi_a}\frac{\xi}{3} + \frac{2\xi}{3}}{{(p-\pi_a}) (1-\xi)+{\pi_a}\frac{\xi}{3} + \frac{2\xi}{3}}$.
+\\
+%\noindent Following the same notation than previous approach \citep{Lynch:2014aa}, the probability to have a reference, alternative or error allele, respectively, is:\\ 
+%\begin{equation}
+%\begin{split}
+%\phi_R = \frac{\pi_r}{p} (1-\xi_A-\xi_{\xi})+(1-\frac{\pi_r}{p})\xi_R, \\
+%\phi_A =  \frac{\pi_a}{p} (1-\xi_R-\xi_{\xi})+(1-\frac{\pi_a}{p})\xi_A, \\
+%\phi_\xi = \frac{\pi_a}{p} \xi_{\xi} +  \frac{\pi_r}{p} \xi_{\xi}.
+%\end{split}
+%\end{equation}
+%\noindent The likelihood of the observed data, given the frequency of the reference and alternative allele ($\pi_r$, $\pi_a=1-\pi_r$), is proportional to $L \propto \phi_R^{n_{rR}} \cdot \phi_A^{n_{rA}} \cdot \phi_\xi^{n_{r\xi}}$. The maximum likelihood estimate of $\pi_r$ (assuming that given sequence errors are accurate) is:
+%\begin{equation}
+%\begin{split}
+%\widehat{\pi_r}=\frac{n_{rR}(1-\xi_A-\xi_\xi)-n_{rA}\xi_R}{(n_{rR}+n_{rA})(1-\xi_R-\xi_A-\xi_\xi)}.
+%\end{split}
+%\end{equation}
+%%The probabilities for estimating the number of errors for each variant position are:
+%%\begin{equation}
+%%\begin{split}
+%%\widehat{p_{n_{\xi_{R}}}} = \widehat{P({R}|\widetilde{A})}= \frac{P({\widetilde{A}|R)P(R)}}{P(\widetilde{A})} ={P(R)} \frac{\xi_A}{P(\widetilde{A})}, \\
+%%\widehat{p_{n_{\xi_{A}}}} = \widehat{P({A}|\widetilde{R})}={P(A)}  \frac{\xi_R}{P(\widetilde{R})},\\
+%%\widehat{p_{n_{\xi_{\xi{A}}}}} = \widehat{P({A}|\widetilde{\xi})}={P(A)}  \frac{\xi_{\xi}}{P(\widetilde{\xi})}.\\
+%%\end{split}
+%%\end{equation}
+
+%\noindent These probabilities can be simply calculated with two independent binomials:
+%\noindent The main problem to estimate the number of sequencing errors is the assignation of the real alleles  to the observed alleles. That is, the observed allele $R$ (the most frequent allele) can be in fact the real allele $r$ or the allele $a$, and the observed allele $A$ (the second most frequent allele) can be in fact the real allele $a$, $r$ or be a sequencing error. Thus, the probabilities are calculated in the following way:
+%\begin{equation}
+%\begin{split}
+%P(\nu_{\xi_{R}} | &\pi_a, n_{rR},\xi,p) = \\
+%&P(\nu_{\xi_{R}} | \pi_a, n_{rR},\xi,p,R=r) \cdot P(R=r) +  \\
+%&P(\nu_{\xi_{R}} | \pi_a, n_{rR},\xi,p,R=a)\cdot P(R=a).\\
+%P(\nu_{\xi_{A}} | &\pi_a, n_{rA},\xi,p) = \\
+%&P(\nu_{\xi_{A}} | \pi_a, n_{rA},\xi,p,A=a)\cdot P(A=a) + \\
+%&P(\nu_{\xi_{A}} | \pi_a, n_{rA},\xi,p,A=r)\cdot P(A=r) + \\
+%&P(\nu_{\xi_{A}} | \pi_a, n_{rA},\xi,p,A=\xi)\cdot P(A=\xi).\\
+%\end{split}
+%\end{equation}
+%\noindent The probabilities for each of the possible states are given in equations at~\ref{lynch14}. That is, $P(R=r)=...$, $P(A=a)=...$, $P(R=a)=P(A=r)=...$ and $P(A=\xi)=...$. Therefore: 
+%\noindent In case the number of allele errors is less than the number of allele reads (\textit{i.e.}$,   \nu_{\xi_A}<n_{rA}$, that is, at least one $n_{rA}$ is real), the probability considers that only one third of the possible errors would be coincident with the real allele. In case all observed allele reads are errors (\textit{i.e.}, $\nu_{\xi_A}=n_{rA}>0$) the probability is obtained from considering that the first error creates the alternative allele (any of the three possible alternative nucleotides):
+%\begin{equation}
+%\begin{split}
+%P(\nu_{\xi_{R}} | &\pi_a, n_{rR},\xi,p) = \\
+%&{n_{rR} \choose \nu_{\xi_{R}}} {p_{\nu_{\xi_{R}}}}^{\nu_{\xi_{R}}} {(1-p_{\nu_{\xi_{R}}})}^{(n_{rR}-\nu_{\xi_{R}})}
+%&{n_{rR} \choose \nu_{\xi_{R}}} {p_{\nu_{\xi_{R}}}}^{\nu_{\xi_{R}}} {(1-p_{\nu_{\xi_{R}}})}^{(n_{rR}-\nu_{\xi_{R}})} \cdot \phi_R + \\
+%&{n_{rA} \choose \nu_{\xi_{A}}} {p_{\nu_{\xi_{A}}}}^{\nu_{\xi_{A}}} {(1-p_{\nu_{\xi_{A}}})}^{(n_{rA}-\nu_{\xi_{A}})} \cdot \phi_A.\\
+%P(\nu_{\xi_{R}} | &\pi_a, n_{rR},\xi,p, \nu_{\xi_R}<n_{rR}) \cdot P( \nu_{\xi_R}<n_{rR}) + P(\nu_{\xi_{R}} | \pi_a, n_{rR},\xi,p, \nu_{\xi_R}=n_{rR}) \cdot P( \nu_{\xi_R}=n_{rR});\\
+%&P(\nu_{\xi_{R}} | \pi_a, n_{rR},\xi,p, \nu_{\xi_R}<n_{rR}) = {n_{rR} \choose \nu_{\xi_R}} (p_{\nu_{\xi_{R}}})^{\nu_{\xi_R}} \cdot (1-p_{\nu_{\xi_{R}}})^{(n_{rR}-\nu_{\xi_R})}, \\
+%&P( \nu_{\xi_R}<n_{rR}) = 1- P( \nu_{\xi_R}=n_{rR}), \\
+%5&P(\nu_{\xi_{R}} | \pi_r, n_{rR},\xi,p, \nu_{\xi_R}=n_{rR}) = 1 \\%\textrm{ if $\nu_{\xi_{R}}=n_{rR}$, or $0$ if not.}\\
+%&P( \nu_{\xi_R}=n_{rR}) =  .
+%\end{split}
+%\end{equation}
+%\begin{equation}
+%\begin{split}
+%P(\nu_{\xi_{A}} | &\pi_a, n_{rA},\xi,p) = \\
+%&{n_{rA} \choose \nu_{\xi_{A}}} {p_{\nu_{\xi_{A}}}}^{\nu_{\xi_{A}}} {(1-p_{\nu_{\xi_{A}}})}^{(n_{rA}-\nu_{\xi_{A}})}
+%&{n_{rA} \choose \nu_{\xi_{A}}} {p_{\nu_{\xi_{A}}}}^{\nu_{\xi_{A}}} {(1-p_{\nu_{\xi_{A}}})}^{(n_{rA}-\nu_{\xi_{A}})} \cdot \phi_R + \\
+%&{n_{rR} \choose \nu_{\xi_{R}}} {p_{\nu_{\xi_{R}}}}^{\nu_{\xi_{R}}} {(1-p_{\nu_{\xi_{R}}})}^{(n_{rR}-\nu_{\xi_{R}})} \cdot \phi_A + 1\cdot \phi_\xi.\\
+%P(\nu_{\xi_{A}} | &\pi_a, n_{rA},\xi,p, \nu_{\xi_A}<n_{rA}) \cdot P( \nu_{\xi_A}<n_{rA}) + P(\nu_{\xi_{A}} | \pi_a, n_{rA},\xi,p, \nu_{\xi_A}=n_{rA}) \cdot P( \nu_{\xi_A}=n_{rA});\\
+%&P(\nu_{\xi_{A}} | \pi_a, n_{rA},\xi,p, \nu_{\xi_A}<n_{rA}) = {n_{rA} \choose \nu_{\xi_A}} (p_{\nu_{\xi_{A}}})^{\nu_{\xi_A}} \cdot (1-p_{\nu_{\xi_{A}}})^{(n_{rA}-\nu_{\xi_A})}, \\
+%&P( \nu_{\xi_A}<n_{rA}) = 1- P( \nu_{\xi_A}=n_{rA}), \\
+%&P(\nu_{\xi_{A}} | \pi_a, n_{rA},\xi,p, \nu_{\xi_A}=n_{rA}) = 1 \\%\textrm{ if $\nu_{\xi_{A}}=n_{rA}$ or $0$ if not.}\\
+%&P( \nu_{\xi_A}=n_{rA}) =  (1-\frac{\pi_a}{p})\xi \cdot p_{\nu_{\xi_{A}}}^{(\nu_{\xi_A}-1)}.
+%\end{split}
+%\end{equation}
+%_A 
+%_R-\xi_{\xi} %_A %_R %_A-\xi_{\xi} %_R
+%\noindent where $E(\nu_R) = n_r P(A)$ and $E(\nu_A) = n_r P(R)$ are the expected number of reads before having sequencing error for the Reference and Alternative samples, respectively%
+
+%\noindent In case of assuming  bivariant positions, the number of reads of each variant before having sequencing error is %$n_{brR} = n_{rR}-n_{{\xi}R}+n_{{\xi}A}=n_{rR}(1-\xi_R-\xi_A)+n_r \xi_A$ and $n_{brA} = n_{rA}-n_{{\xi}A}+n_{{\xi}R}=n_{rA}(1-\xi_A-\xi_R)+n_r\xi_R$, for both variants. 
+%$n_{brR} = \frac{n_{rR} - \xi_A \cdot n_r}{1-\xi_R-\xi_A}$ and $n_{brA} = \frac{n_{rA} - \xi_R \cdot n_r}{1-\xi_R-\xi_A}$. 
+%For each bivariant position, the expected number of reads for each variant after having sequencing errors is $E[n_{rR}] = n_{brR}(1-\xi_{bR}) + n_{brA}\cdot\xi_{bA}$ and $E[n_{rA}] = n_{brA}(1-\xi_{bA}) + n_{brR}\cdot\xi_{bR}$, where $\xi_{bR}$ and $\xi_{bA}$ are the sequencing error rates of a given nucleotide before the error occurs. On the other hand, %
+%Considering the sequencing error rates of a given nucleotide after the error occurs, the probabilities to have a read with or without error for each variant are: %$E[n_{rR}] = n_{rR}(1-\xi_{R}) + n_{rR}\cdot\xi_{R}$ and $E[n_{rA}] = n_{rA}(1-\xi_{A}) + n_{rA}\cdot\xi_{bA}$. From this expressions we %conclude that the relationship between $\xi_{bR}$ and $\xi_R$ is: $\xi_{bR} = \xi_A \cdot {n_{rA}}/{n_{brR}}$ and $\xi_{bA} = \xi_R \cdot {n_{rR}}/{n_{brA}}$. Solving from these expressions, we have that $n_{brA} = n_{rA}(1-\xi_{A})+\xi_R \cdot n_{rR}$ and $n_{brR} = n_r - n_{brA}$ and we estimate of the probability of error for each variant:
+%
+%\begin{equation}
+%\begin{split}
+%p_{n_{\xi_{R}}} =  \frac{\xi_R n_{brA}}{\xi_R n_{brA}+(1-\xi_R)n_{brR}}, %\\
+%p_{n_{\bar{\xi_{{R}}}}} = \frac{(1-\xi_R) n_{brR}}{\xi_R n_{brA}+(1-\xi_R)n_{brR}}, \\%\\ \text{and} \\
+%p_{n_{\xi_{A}}} = \frac{\xi_A  n_{brR}}{\xi_A n_{brR}+(1-\xi_A)n_{brA}}, %\\
+%p_{n_{\bar{\xi_{{A}}}}} =  \frac{(1-\xi_A) n_{brA}}{\xi_A n_{brR}+(1-\xi_A)n_{brA}}.
+%P(n_{\bar{\xi_{{A}}}}) = \frac{n_{brA}}{n_r}- \xi_R \frac{n_{rR}}{n_r},\\
+%P(n_{\bar{\xi_{{R}}}}) = \frac{n_{brR}}{n_r}- \xi_A \frac{n_{rA}}{n_r}.
+%\end{split}
+%\end{equation}
+%
+%\noindent %If the pool size ($p$) is 1, $P(n_{\xi_{R}})$ is forced to be 1. 
+%In case of considering tetravariant positions, four binomials are used, one for each nucleotide (so the 'third' error class is obviously excluded). The procedure is the following:
+%\\(TO INCLUDE)\\
+%\begin{equation}
+%\begin{split}
+%P(\nu_{\xi{As}},\nu_{\xi{Ts}},\nu_{\xi{Cs}},\nu_{\xi{Gs}} | n_{rAs},n_{rCs},n_{rGs},n_{rTs},\xi_{As},\xi_{Cs},\xi_{Gs},\xi_{Ts}) = \\ %
+%\frac{n_r!}{\nu_{\xi{As}}!\nu_{\xi{Cs}}!\nu_{\xi{Gs}}!\nu_{\xi{Ts}}! (n_{rAs}-\nu_{\xi{As}})! (n_{rCs}-\nu_{\xi{Cs}})! (n_{rGs}-\nu_{\xi{Gs}})! (n_{rTs}-\nu_{\xi{Ts}})!} \cdot \\ %
+%(\frac{n_{r{As}}\xi_{As}}{n_r})^{\nu_{\xi{As}}} (\frac{n_{br{Cs}}\xi_{Cs}}{n_r})^{\nu_{\xi{Cs}}} (\frac{n_{br{Gs}}\xi_{Gs}}{n_r})^{\nu_{\xi{Gs}}} (\frac{n_{br{Ts}}\xi_{Ts}}{n_r})^{\nu_{\xi{Ts}}} \cdot \\%
+%(\frac{n_{br{As}}(1-\xi_{As})}{n_r})^{(n_{rAs}-\nu_{\xi{As}})} (\frac{n_{br{Cs}}(1-\xi_{Cs})}{n_r})^{(n_{rCs}-\nu_{\xi{Cs}})} \cdot \\ %
+%(\frac{n_{br{Gs}}(1-\xi_{Gs})}{n_r})^{(n_{rGs}-\nu_{\xi{Gs}})} (\frac{n_{br{Ts}}(1-\xi_{Ts})}{n_r})^{(n_{rTs}-\nu_{\xi{Ts}})},
+%(\frac{n_{br\overline{As}}\xi_{As0}}{n_r})^{\nu_{\xi{As}}} (\frac{n_{br\overline{Cs}}\xi_{Cs0}}{n_r})^{\nu_{\xi{Cs}}} (\frac{n_{br\overline{Gs}}\xi_{Gs0}}{n_r})^{\nu_{\xi{Gs}}} (\frac{n_{br\overline{Ts}}\xi_{Ts0}}{n_r})^{\nu_{\xi{Ts}}} \cdot \\%
+%(\frac{n_{brAs}(1-\xi_{As0})}{n_r})^{(n_{rAs}-\nu_{\xi{As}})} (\frac{n_{brCs}(1-\xi_{Cs0})}{n_r})^{(n_{rCs}-\nu_{\xi{Cs}})} \cdot \\ %
+%(\frac{n_{brGs}(1-\xi_{Gs0})}{n_r})^{(n_{rGs}-\nu_{\xi{Gs}})} (\frac{n_{brTs}(1-\xi_{Ts0})}{n_r})^{(n_{rTs}-\nu_{\xi{Ts}})},
+%\frac{\frac{1}{3}n_{r{\bar{As}}}+\nu_{\xi{As}}}{\nu_{\xi{As}}}(\frac{\xi_S}{3})^{\nu_{\xi{As}}}(1-\frac{\xi_S}{3})^{\frac{1}{3}n_{r{\bar{As}}}} \cdot \\ %
+%\frac{\frac{1}{3}n_{r{\bar{Cs}}}+\nu_{\xi{Cs}}}{\nu_{\xi{Cs}}}(\frac{\xi_S}{3})^{\nu_{\xi{Cs}}}(1-\frac{\xi_S}{3})^{\frac{1}{3}n_{r{\bar{Cs}}}} \cdot \\ %
+%\frac{\frac{1}{3}n_{r{\bar{Gs}}}+\nu_{\xi{Gs}}}{\nu_{\xi{Gs}}}(\frac{\xi_S}{3})^{\nu_{\xi{Gs}}}(1-\frac{\xi_S}{3})^{\frac{1}{3}n_{r{\bar{Gs}}}} \cdot \\ %
+%\frac{\frac{1}{3}n_{r{\bar{Ts}}}+\nu_{\xi{Ts}}}{\nu_{\xi{Ts}}}(\frac{\xi_S}{3})^{\nu_{\xi{Ts}}}(1-\frac{\xi_S}{3})^{\frac{1}{3}n_{r{\bar{Ts}}}},
+%\end{split}
+%\end{equation}
+%\noindent where $n_{brAs}=\frac{n_{rAs}-n_r{\cdot}\xi_{As0}}{1-2\xi_{As0}}$ and $n_{br\overline{As}} = n_r - n_{brAs}$. The same is for the other three nucleotides.
+
+
+%\subsubsection{Error produced by degradation of ancient DNA samples}
+%For this specific samples, an additional error must be included to calculate the number of errors produced by degradation of DNA. 
+%
+%-- INCLUDE HERE --
+
+\subsection{Estimating the pool and the sample frequency}
+
+The third term probability of the equation \ref{main.equation} can be calculated considering the model of sequencing errors shown above. That is:
+\begin{equation}
+\begin{split}
+&P(\pi_a , f_a | n_{rR},n_{rA},n_{r\xi},\xi,\theta,p) = \\ % _A,\xi_R, \xi_\xi
+&\frac{P(n_{rR},n_{rA},n_{r\xi} | \pi_a,f_a,\xi,\theta,p) \cdot P(\pi_a | f_a, p, \theta) \cdot P(f_a | p, \theta)}{\sum_{\pi_{Ai}=0}^{\pi_{Ai}=p}\sum_{f_{Ai}=0}^{f_{Ai}=1}{P(n_{rR},n_{rA},n_{r\xi} | \pi_{Ai},f_{Ai},\xi,\theta,p) \cdot P(\pi_{Ai} | f_{Ai}, p, \theta) \cdot P(f_{Ai} | p,\theta)}}. %_A,\xi_R, \xi_\xi %_A,\xi_R, \xi_\xi
+\end{split}
+\end{equation}
+\noindent When considering $P(n_{rR},n_{rA},n_{r\xi} | \pi_a, f_{a},\xi,\theta,p)=P(n_{rR},n_{rA},n_{r\xi} | \pi_a,\xi,p)$, %
+is possible to confound  $n_{r\xi}$ with $n_{rA}$ when the true $n_{rA}$ is smaller than $n_{r\xi}$. In those cases, this probability is dependent whether comes from an error or from a real alternative variant. In order to consider this artefact, the probability should consider the number of different alleles observed. That is, % 
+the number of different alleles and their frequency determine the value of $n_{rR}$ and $n_{rA}$ in the calculation, being $n_{rR}$ the most frequent allele and $n_{rA}$ the second most frequent. The probability of observations must consider alternative alleles all the combinations were error reads can substitute the alele $A$ because they are observed at higher frequency. Error reads are separated in the two possible allele variants ($n_{r\xi}=n_{r\xi_1}+n_{r\xi_2}$,  and $\phi_{\xi_1}=\phi_{\xi_2}=\xi/3$). In case we know the alleles that correspond to each of the reads, it can be formulated as a multinomial:
+\begin{equation}
+\begin{split}
+P'(n'_{rR},&n'_{rA},n'_{r\xi_1},n'_{r\xi_2} | \pi_a,\xi,p) = \\% P'(n'_{rR},n'_{rA},n'_{r\xi_1},n'_{r\xi_2} | \pi_a,\xi,p) \\
+& \frac{n_{r}!}{n'_{rR}!n'_{rA}!n'_{r\xi_1}!n'_{r\xi_2}!} \cdot {\phi_{r}}^{n'_{rR}} \cdot {\phi_{a}}^{n'_{rA}} \cdot {\phi_{\xi_1}}^{n'_{r\xi_1}} \cdot {\phi_{\xi_2}}^{n'_{r\xi_2}}\\ 
+ \end{split}
+\end{equation}
+\noindent Here, $n'_{rR}$,  $n'_{rA}$, $n'_{r\xi_1}$ and $n'_{r\xi_2}$ are the real corresponding number of alleles from $r$ and $a$ and from each error sequencing, respectively. \\
+
+The  probability for each combination of observed reads must include all these combinations that have a major and a minor allele, whatever is the real allele. That is, the observed alleles are reordered from major to minor, and the frequency is folded. The observed  $(n_{rR},n_{rA},n_{r\xi_1},n_{r\xi_2}) = sort(n'_{rR},n'_{rA},n'_{r\xi_1},n'_{r\xi_2})$. Therefore this probability must sum all cases where sorting the real alleles by size gives the same number of observed major and minor alleles:\\
+\begin{equation}
+\begin{split} 
+P(n_{rA},&n_{rR},n_{r\xi_1},n_{r\xi_2} | \pi_a,\xi,p) = \\
+\sum \bigg[&P'(sort(n'_{rR},n'_{rA},n'_{r\xi_1},n'_{r\xi_2})=(n_{rR},n_{rA},n_{r\xi_1},n_{r\xi_2})| \pi_a,\xi,p) + \\
+&P'(sort(n'_{rR},n'_{rA},n'_{r\xi_1},n'_{r\xi_2})=(n_{rR},n_{rA},n_{r\xi_1},n_{r\xi_2})| \pi_r,\xi,p) \bigg] / (2-\delta_{\pi_a,\pi_r}) \\
+\end{split}
+\end{equation}
+
+%This probability can be separated in three sections depending if the observed minor allele frequency ($n_{rA}$) is a coincident allele with ($\pi_a$) or alternatively comes from a sequence error. Note that a folded spectra is also assumed (unknown derived/ancestral variant). This probability is divided in three other probabilities: the probability of having the observed reads when $n_{rA}=0$ ($P_{n_{rA}=0}$), the probability of having the observed reads when $n_{rA}$ is a value larger than zero and the observed allele $A$ is the minor alternative allele $a$ ($P_{n_{rA>0|A=a}}$) and finally the probability of having the observed reads when $n_{rA}$ is a value larger than zero but the observed allele $A$ is not the minor alternative allele $a$ but an error sequence ($P_{n_{rA>0|A \neq a}}$):
+%\begin{equation}
+%\begin{split}
+%P(n_{rA},&n_{rR},n_{r\xi} | \pi_a, f_{a},\xi_A,\xi_R, \xi_\xi,\theta,p) = P_{n_{rA}}. \\
+%P_{n_{rA}} = &P_{n_{rA>0|A=a}}\cdot P_{A=a} +  P_{n_{rA}>0|A\neq a}\cdot P_{A\neq a} +  P_{n_{rA}=0}.
+%\\
+%&P_{n_{rA>0|A=a}} = 
+%\begin{cases} 
+%\bigg[\frac{n_{r}!}{n_{rR}!n_{rA}!n_{r\xi}!} \cdot {\phi_{R}}^{n_{rR}} \cdot {\phi_{\xi_A}}^{n_{rA}} \cdot {\phi_{\xi}}^{n_{r\xi}} + &\\
+%         \frac{n_{r}!}{n_{rR}!n_{rA}!n_{r\xi}!} \cdot {\phi_{R}}^{n_{rA}} \cdot {\phi_{\xi_A}}^{n_{rR}} \cdot {\phi_{\xi}}^{n_{r\xi}}\bigg]  /
+%         (1+\delta_{n_{rR},n_{rA}})  \quad \quad \quad \quad \quad \quad  & \textrm{if $\pi_{a}>0$},
+%\\
+%0 & \textrm{if $\pi_{a}=0$},
+%\end{cases}
+%\\
+%&P_{n_{rA>0|A \neq a}} = 
+%\begin{cases} 
+%\bigg[{n_r \choose 1} \cdot {\phi_{R0}}^{(n_{r}-1)} \cdot {\phi_{A0}}^1 + 
+%         {n_r \choose 1} \cdot {\phi_{R0}}^1 \cdot {\phi_{A0}}^{(n_{r}-1)}\bigg] /
+%          (1+\delta_{n_{r}-1,1})\cdot \\
+%\bigg[\frac{(n_{r}-1)!}{n_{rR}!(n_{rA}-1)!n_{r\xi}!} \cdot {\phi_{R01}}^{n_{rR}} \cdot {\phi_{A01}}^{(n_{rA}-1)} \cdot {\phi_{\xi 01}}^{n_{r\xi}} + &\\
+%         \frac{(n_{r}-1)!}{n_{rR}!(n_{rA}-1)!n_{r\xi}!} \cdot {\phi_{R01}}^{n_{rA}} \cdot {\phi_{A01}}^{(n_{rR}-1)} \cdot {\phi_{\xi 01}}^{n_{r\xi}}\bigg] /
+%	(1+\delta_{n_{rA}-1,n_{rR}}) \\ & \textrm{if $\pi_{a}=0$},
+%\\
+%\bigg[{n_r \choose 1} \cdot {\phi_{R1}}^{(n_{r}-1)} \cdot {\phi_{A1}}^1 +
+%         {n_r \choose 1} \cdot {\phi_{R1}}^1 \cdot {\phi_{A1}}^{(n_{r}-1)}\bigg] /
+%         (1+\delta_{n_{r}-1,1})\cdot \\
+%\bigg[\frac{(n_{r}-1)!}{n_{rR}!(n_{rA}-1)!n_{r\xi}!} \cdot {\phi_{R11}}^{n_{rR}} \cdot {\phi_{A11}}^{(n_{rA}-1)} \cdot {\phi_{\xi 11}}^{n_{r\xi}} + &\\
+%         \frac{(n_{r}-1)!}{n_{rR}!(n_{rA}-1)!n_{r\xi}!} \cdot {\phi_{R11}}^{n_{rA}} \cdot {\phi_{A11}}^{(n_{rR}-1)} \cdot {\phi_{\xi 11}}^{n_{r\xi}}\bigg] /
+%	(1+\delta_{n_{rA}-1,n_{rR}}) \\ & \textrm{if $\pi_{a}>0$},
+%\end{cases}
+%\\
+%&P_{n_{rA}=0} ={\phi_R}^{n_rR} + {\phi_A}^{n_rR},
+%\end{split}
+%\end{equation}
+%
+%\noindent In case $A \neq a$ and $\pi_a=0$, the ratio for the first error is $\pi_{A0}=\xi$ and $\phi_{R0}=1-\xi$; for the next A alleles ($n_{rA}>1$), $\pi_{R01}=1-\xi$, $\phi_{A01}=\xi/3$ and $\phi_{\xi 01}=2/3\xi$.\\
+% In case $A \neq a$ and $\pi_a>0$, the first error occurs with a ratio $\pi_{A1}=\xi/2$ and $\phi_{R1}=1-\xi/2$; for the next A alleles ($n_{rA}>1$), $\phi_{R11}=(1-\xi)\pi_r/p + \xi/3 \cdot \pi_a/p $, $\phi_{A11}=\xi/3$ and $\phi_{\xi 11}=2\xi/3 \cdot \pi_r/p  + (1-\xi)\pi_a/p$.  $P_{A=a} \sim ? $ and $P_{A \neq a} = 1 - P_{A=a}$.\\
+
+%P(n_{rA}=( x>0),n_{rR},n_{r\xi} | \pi_a, f_a,\xi,\theta,p) +\sum P(n_{rA}=0,n_{rR},n_{r\xi_A}=(x>0), n_{r\xi}| \pi_a, f_a,\xi,\theta,p)$. $n_{rA}$ plus the most frequent errors that mimics $n_{rA}$ ($n_{r\xi_A}$) are fixed in the sum. The calculation depends on $n_{rA}$ and $n_{r\xi}$;%, $n_{r\xi}$ is split in $n_{r\xi_1}$ and $n_{r\xi_2}$ and we sum all the probabilities having $n_{rA}=0$ and $n_{r\xi_1}>0 | n_{r\xi_2}>0$ (like substitute $n_{r\xi_i}$ by $n_{rA}$):
+%is approximated by a multinomial:
+%Thus, $P(n_{rR},n_{rA},n_{r\xi} | \pi_a, f_a,\xi,\theta,p) = $\\
+%\begin{equation}
+%\begin{split}
+%\begin{cases}
+%
+%
+%P&(n_{rR},n_{rA},n_{r\xi} | \pi_a, f_a,\xi,\theta,p) = %
+%
+%(({n_r \choose 1} \cdot {\phi_{1R}}^{(n_{r}-1)} \cdot {(1-\phi_{1R})}^1)   +  \\
+% {n_r \choose 1} \cdot {\phi_{1A}}^{(n_{r}-1)} \cdot {(1-\phi_{1A})}^1) / (1+\delta_{n_r-1,1}) \cdot
+%\\ \bigg[%
+%\frac{(n_{r}-1)!}{n_{rR}!(n_{r\xi_A}-1)!n_{r\xi}!} \cdot {\phi_{R}}^{n_{rR}} \cdot {\phi_{\xi_A}}^{(n_{r\xi_A}-1)} \cdot {\phi_{\xi}}^{n_{r\xi}}  +
+%\\
+%\frac{(n_{r}-1)!}{n_{rR}!(n_{r\xi_A}-1)!n_{r\xi}!} \cdot {\phi_{R}}^{(n_{r\xi_A}-1)} \cdot {\phi_{\xi_A}}^{n_{rR}} \cdot {\phi_{\xi}}^{n_{r\xi}} \bigg]  / (1+%\delta_{n_{r\xi_A},n_{rR}})\\
+%+ \\
+%(1- ({n_r \choose 1} \cdot {\phi_{1R}}^{(n_{r}-1)} \cdot {(1-\phi_{1R})}^1)   +  \\
+%{n_r \choose 1} \cdot {\phi_{1A}}^{(n_{r}-1)} \cdot {(1-\phi_{1A})}^1)/ (1+\delta_{n_r-1,1}) \cdot
+%\\ \bigg[%
+%\frac{n_{r}!}{n_{rR}!n_{rA}!n_{r\xi}!} \cdot {\phi_R}^{n_{rR}} \cdot {\phi_A}^{n_{rA}} \cdot {\phi_\xi}^{n_{r\xi}} + 
+%\\
+%\frac{n_{r}!}{n_{rR}!n_{rA}!n_{r\xi}!} \cdot {\phi_R}^{n_{rA}} \cdot {\phi_A}^{n_{rR}} \cdot {\phi_\xi}^{n_{r\xi}} \bigg] / (1+\delta_{n_{rR},n_{rA}})\\ 
+%
+%
+%\\&P(n_{rA}=0,n_{rR},n_{r\xi}=0 | \pi_a, f_a,\xi,\theta,p) + 
+%P(n_{rA}=( x>0),n_{rR},n_{r\xi} | \pi_a, f_a,\xi,\theta,p) + \\
+%&\sum P(n_{rA}=0,n_{rR},n_{r\xi}=(  x>0) | \pi_a, f_a,\xi,\theta,p),\\ 
+%&\textrm{ where $n_{r_R}$  and $n_{rA}+n_{r\xi}$ are fixed, and where } \\ 
+%&P(n_{rA}=0,n_{rR},n_{r\xi}=0 | \pi_a, f_a,\xi,\theta,p) = {\phi_R}^{n_{rR}},\\
+%&P(n_{rA}=( x>0),n_{rR},n_{r\xi} | \pi_a, f_a,\xi,\theta,p) = \bigg[\frac{n_{r}!}{n_{rR}!n_{rA}!n_{r\xi}!} \cdot %\\ %_A,\xi_R, \xi_\xi
+%{\phi_R}^{n_{rR}} \cdot {\phi_A}^{n_{rA}} \cdot {\phi_\xi}^{n_{r\xi}} +\\ 
+%& \frac{n_{r}!}{n_{rR}!n_{rA}!n_{r\xi}!} \cdot %\\ %_A,\xi_R, \xi_\xi
+%{\phi_R}^{n_{rA}} \cdot {\phi_A}^{n_{rR}} \cdot {\phi_\xi}^{n_{r\xi}} \bigg] / (1+\delta_{n_{rR},n_{rA}})\\
+%&\textrm{ and }\\
+%&P(n_{rA}=0,n_{rR},n_{r\xi}=(  x>0) | \pi_a, f_a,\xi,\theta,p) ={n_r \choose 1} \cdot {\phi_{1R}}^{(n_{r}-1)} \cdot {(1-\phi_{1R})}^1 \cdot \\
+%&\frac{(n_{r}-1)!}{n_{rR}!(n_{r\xi_1}-1)!n_{r\xi_2}!} \cdot {\phi_{R}}^{n_{rR}} \cdot {\phi_{\xi_1}}^{(n_{r\xi_1}-1)} \cdot {\phi_{\xi_2}}^{n_{r\xi_2}}.\\
+%\left(\pi_r(1-\xi_A-\xi_{\xi})+(1-\pi_r)\xi_R)\right)^{n_{rR}} \cdot \\%
+%\left(\pi_a(1-\xi_R-\xi_{\xi})+(1-\pi_a)\xi_A)\right)^{n_{rA}} \cdot \left(\xi_\xi\right)^{n_{r\xi}}.
+%
+%
+%\bigg[\frac{n_{r}!}{n_{rR}!n_{rA}!n_{r\xi}!} \cdot {\phi_R}^{n_{rR}} \cdot {\phi_A}^{n_{rA}} \cdot {\phi_\xi}^{n_{r\xi}} + \\
+%\frac{n_{r}!}{n_{rR}!n_{rA}!n_{r\xi}!} \cdot {\phi_R}^{n_{rA}} \cdot {\phi_A}^{n_{rR}} \cdot {\phi_\xi}^{n_{r\xi}} \bigg] / (1+\delta_{n_{rR},n_{rA}})\\ &\textrm{ if $\pi_{A}>0$}, \\
+%{n_r \choose 1} \cdot {\phi_{1R}}^{(n_{r}-1)} \cdot {(1-\phi_{1R})}^1 \cdot \\ \frac{(n_{r}-1)!}{n_{rR}!(n_{r\xi_A}-1)!n_{r\xi}!} \cdot {\phi_{R}}^{n_{rR}} \cdot {\phi_{\xi_A}}^{(n_{r\xi_A}-1)} \cdot {\phi_{\xi}}^{n_{r\xi}}.\\
+%&\textrm{ if $\pi_{A}=0$ and $n_{rA}>0$}, \\
+%\textrm{ if $n_{rA}=0$ and $n_{r\xi}>0$}, \\
+%
+%{\phi_R}^{n_{rR}} + {\phi_A}^{n_{rR}} \\
+%&\textrm{ if $n_{rR}=n_r$},\\
+%
+%
+%\end{cases}
+%\end{split}
+%\end{equation}
+%\noindent In case assuming that  the second variant is an error, $n_{r\xi_A}$ is the second most frequent nucleotide variant and its probability is $\phi_{\xi_A} = \phi_\xi/2$. 
+
+\noindent $P(\pi_a | f_a, p, \theta)$ can be estimated with binomials (considering a folded site frequency spectrum, that is, no outgroup): \\
+\begin{equation}
+\begin{split}
+P(\pi_a | f_a, p, \theta) = \bigg[{p \choose \pi_a} (\frac{f_a}{N})^{\pi_a} (1-\frac{f_a}{N})^{(p-\pi_a)} + \\
+{p \choose \pi_a} (\frac{f_a}{N})^{(p-\pi_a)} (1-\frac{f_a}{N})^{\pi_a}\bigg]/(1+\delta_{\pi_a,p-\pi_a}),
+\end{split}
+\end{equation}
+\noindent where $N$ is the population size and $\delta_{\pi_a,p-\pi_a}$ =  1 if $\pi_a = p-\pi_a$, otherwise is 0.
+
+%\noindent In case using large pool sizes, we will only analyze a number (say hundred) of frequency values distributed from the total pool size ($p$). 
+
+\noindent Finally, $P(f_a | \theta,p)$ is calculated assuming a SNM model as a prior (see next subsection).
+
+\subsubsection{The SNM as the prior frequency for the whole sample:}
+
+%LOOK IF WE CONSIDER  THE MINOR ALLELE FREQUENCY. OR THE REFERENCE ALLELE. PERHAPS THERE IS A PROBLEM WHEN MAKE THE FOLDING PROBS.
+
+We consider the calculation of $P(f_a | \theta)$ assuming the SNM and a given variability value, although it is possible consider other \textit{a priori} conditions. %
+The probability of having a given sample frequency may be assumed as the theoretical SFS under the stationary Standard Neutral Model  (SNM). %Thus:
+%
+%\begin{equation}
+%    P(f_r | \theta,p) =  
+%\begin{cases}
+%    \theta a_{p} \frac{1/f_r}{a_{p}} = \theta/f_r & \textrm{ if $p > f_r > 0$} \\
+%    1-\theta a_{p} & \textrm{ otherwise}
+%\end{cases}
+%\end{equation}
+%\noindent if the ancestral variant is known. Here $a_{p} = \sum_{i=1}^{i=p-1}{1/i}$ and $\theta \ll1$. For large pool sizes we approximate $a_p\simeq 0.578 + log(p-1)$.
+
+%\noindent In case considering two or more variants per position, each probability for each derived variant is calculated separately and combined to obtain the prior. For two variants, the probability is very similar as the above but counting the mutations that can fall on the same branch but counting the possibility to have only two variants with two or three mutations:
+%\begin{equation}
+%P(\pi_{R_{anc}},\pi_{R_{2}},\pi_{R_{3}}=0,\pi_{R_{4}}=0 | p,\theta) =  \frac{\theta}{\pi_{R_{2}}} +  \frac{\theta^2}{\pi_{R_{2}}^2} + \frac{\theta^3}{\pi_{R_{2}}^3} \simeq \frac{\theta}{\pi_{R_{2}}}.
+%\end{equation}
+%\noindent For three variants ($v=3$, that is the ancestral variant $\pi_{R_{anc}}$ plus two derived $\pi_{R_{2}}$ and $\pi_{R_{3}}$) we count that the second derived variant can increase over the ancestral or over the first derived variant:
+%\begin{equation}
+%\begin{split}
+%P(\pi_{R_{anc}}, \pi_{R_{2}},\pi_{R_{3}},\pi_{R_{4}}=0| p,\theta) = \frac{\theta}{\pi_{R_{2}}}\frac{\theta}{\pi_{R_{3}}} +\frac{\theta}{\pi_{R_{2}}+\pi_{R_{3}}} (\frac{\theta}{\pi_{R_{2}}} + \frac{\theta(1-\delta_{\pi_{R_{3}},\pi_{R_{2}}})}{\pi_{R_{3}}}) + \\ \frac{\theta^2}{\pi_{R_{2}}^2}\frac{\theta}{\pi_{R_{3}}} + \frac{\theta}{\pi_{R_{2}}}\frac{\theta^2}{\pi_{R_{3}}^2} + \frac{\theta^2}{(\pi_{R_{2}}+\pi_{R_{3}})^2} (\frac{\theta}{\pi_{R_{2}}}+ \frac{\theta(1-\delta_{\pi_{R_{3}},\pi_{R_{2}}})}{\pi_{R_{3}}}) \simeq \\ \frac{\theta^2}{\pi_{R_{2}}\pi_{R_{3}}} +\frac{\theta^2}{\pi_{R_{2}}+\pi_{R_{3}}} (\frac{1}{\pi_{R_{2}}} + \frac{1-\delta_{\pi_{R_{3}},\pi_{R_{2}}}}{\pi_{R_{3}}}),
+%\end{split}
+%\end{equation}
+%\noindent where $(1-\delta_{\pi_{R_{3}},\pi_{R_{2}}})$ =  1 if $\pi_{R_{3}} = \pi_{R_{2}}$, otherwise is 0.
+
+%\noindent For four variants ($v=4$, three derived), we have one additional combination:
+
+%\begin{equation}
+%\begin{split}
+%P(\pi_{R_{anc}}, \pi_{R_{2}},\pi_{R_{3}},\pi_{R_{4}}| p,\theta) = \frac{\theta}{\pi_{R_{2}}}\frac{\theta}{\pi_{R_{3}}}\frac{\theta}{\pi_{R_{4}}} + \\ \frac{\theta}{p-\pi_{R_{anc}}} \sum_{i=2}^{v} P(\pi_{R_{i}}, \pi_{R_{j \neq i}},\pi_{R_{k \neq i,j}}| \pi_{R},\theta)
+%\end{split}
+%\end{equation}
+
+%\noindent For monomorphic positions, the probability would be  one minus the probabilities of having %two, three or four 
+%variants, which is approximately: 
+%\begin{equation}
+%\begin{split}
+%P(\pi_{R_{anc}}, \pi_{R_{2}}=0,\pi_{R_{3}}=0,\pi_{R_{4}}=0 | p,\theta) \simeq 1- \theta a_{p}
+%\end{split}
+%\end{equation}
+%\noindent  If  %
+\noindent Assuming %
+the derived variant is unknown (no ancestral variant or outgroup is available) and considering no more than two variants, the prior probability is calculated as:
+\begin{equation}
+P_n(f_a, | \theta) =  
+\begin{cases}
+\theta\left(\frac{1}{f_a}+\frac{1-\delta_{f_a,N-f_a}}{N-f_a}\right) & \textrm{if $N/2 \geqslant f_a > 0$}\\
+%\frac{\theta}{2}\left(\frac{1}{f_r}+\frac{1}{N-f_r}\right) & \textrm{if $N > f_r > 0$}\\
+1-\theta a_{n} & \textrm{ if $f_a$ is 0},
+%\frac{1-\theta a_{n}}{2} & \textrm{ otherwise},
+\end{cases}
+\end{equation}
+Here $a_{n} = \sum_{i=1}^{i=N-1}{1/i}$ and $\theta \ll1$. Assuming a large population size, we approximate $a_n\simeq 0.578 + log(N-1)$, $f_a$ is the frequency of the minor allele, $\delta_{f_a,N-f_a}$ =  1 if $f_a = N-f_a$, otherwise is 0
+. Note the subindex in  the probability ($P_n$) to differentiate this probability with the probability calculated considering the ancestral variant.\\
+
+%\noindent In case of considering two or more variants, and if the derived variant is unknown (no outgroup), combine all possible ancestralities to obtain the prior probability at this position. For two variants:
+%\begin{equation}
+%\begin{split}
+%P_n(\pi_{R_{1}},\pi_{R_{2}},\pi_{R_{3}}=0,\pi_{R_{4}}=0 | p,\theta) =  {\theta}\left(\frac{1}{\pi_{R{2}}}+\frac{1-\delta_{\pi_{R_{2}},\pi_{R{1}}}}{\pi_{R_{1}}}\right) +\\  {\theta^2}\left(\left(\frac{1}{\pi_{R{2}}}\right)^2+\left(\frac{1-\delta_{\pi_{R_{2}},\pi_{R{1}}}}{\pi_{R_{1}}}\right)^2\right) +\\  {\theta^3}\left(\left(\frac{1}{\pi_{R{2}}}\right)^3+\left(\frac{1-\delta_{\pi_{R_{2}},\pi_{R{1}}}}{\pi_{R_{1}}}\right)^3\right) \simeq  \\ {\theta}\left(\frac{1}{\pi_{R{2}}}+\frac{1-\delta_{\pi_{R_{2}},\pi_{R{1}}}}{\pi_{R_{1}}}\right),
+%\end{split}
+%\end{equation}
+%\noindent where $\pi_{R_{1}}$ is the variant at higher frequency.
+
+%\noindent For three variants and no outgroup ($v=3$) we consider all the possible ancestralities using the probabilities obtained when the ancestral variant is known:
+%\begin{equation}
+%P_n(\pi_{R_{1}}, \pi_{R_{2}},\pi_{R_{3}},\pi_{R_{4}}=0| p,\theta) = \sum_{i=1}^{v}P(\pi_{R_{i}}, \pi_{R_{j \neq i}},\pi_{R_{k \neq i,j}}| p,\theta),
+%\end{equation}
+%\noindent where the frequency value of each variant is less or equal to half of the sample size ($p$). For four variants and no outgroup ($v=4$):
+%\begin{equation}
+%P_n(\pi_{R_{1}}, \pi_{R_{2}},\pi_{R_{3}},\pi_{R_{4}}| p,\theta) = \sum_{i=1}^{v}P(\pi_{R_{i}}, \pi_{R_{j \neq i}},\pi_{R_{k \neq i,j}},\pi_{R_{h \neq i,j,k}}| p,\theta) 
+%\end{equation}
+
+%\noindent For monomorphic positions, the probability would be  one minus the probabilities of having %two, three or four 
+%variants, which is again approximately \\
+%\begin{equation}
+%\begin{split}
+%P_n(\pi_{R_{1}}, \pi_{R_{2}}=0,\pi_{R_{3}}=0,\pi_{R_{4}}=0| p,\theta) \simeq 1- \theta a_{p}
+%\end{split}
+%\end{equation}
+%
+%The prior can be extended to transitions and transversions (?or even to ancient DNA, adding the prior for a type of transversions near to the extremes of broken DNA?).
+%
+\subsubsection{Alternative priors: the Exponential model and the Uniform distribution:}
+\noindent The exponential model is a convenient model in case of using pools that have experimented a fast growth, such as a bacterial growth colony, infection process or cancer cell expansion. In such cases the prior used considering no more than two variants is (\citealp{Ohtsuki:2017aa}) %
+and considering the folded spectrum:
+
+%\begin{equation}
+%    P(f_r | \theta,p) =  
+%\begin{cases}
+%    \theta/(f_r(f_r+1)) & \textrm{ if $p > f_r > 0$} \\
+%    1-\theta a_{e} & \textrm{ otherwise}
+%\end{cases}
+%\end{equation}
+%\noindent if the ancestral variant is known. Here $a_{e} = \sum_{i=1}^{i=p-1}{1/(i(i+1))}$ and $\theta \ll1$. For large values we approximate $a_e\simeq 1 + log(p-1) - log(p)$.
+%
+%\noindent  If the derived variant is unknown (no ancestral variant or outgroup is available) and considering no more than two variants, the prior probability would be calculated as:
+\begin{equation}
+P_n(f_a | \theta) =  
+\begin{cases}
+\theta\left(\frac{1}{(f_a(f_a+1))}+\frac{1-\delta_{f_a,N-f_a}}{(N-f_a)(N-(f_a+1))}\right) & \textrm{if $N/2 \geqslant f_a > 0$}\\
+%\frac{\theta}{2}\left(\frac{1}{(f_r(f_r+1))}+\frac{1}{(N-f_r)(N-(f_r+1))}\right) & \textrm{if $N > f_r > 0$}\\
+1-\theta a_{e} & \textrm{  if $f_a$ is 0},
+%\frac{1-\theta a_{e}}{2} & \textrm{ otherwise},
+\end{cases}
+\end{equation}
+\noindent Here $a_{e} = \sum_{i=1}^{i=N-1}{1/(i(i+1))}$ and $\theta \ll1$. Assuming a large population size, $a_e\simeq 1 + log(p-1) - log(N)$.
+
+\noindent If the user does not want to consider informative priors and prefer to use a flat distribution with equal probabilities to each frequency, a uniform distribution is considered. %Considering no more than two variants:
+
+%\begin{equation}
+%    P(f_r | \theta,p) =  
+%\begin{cases}
+%    \theta/(p-1) & \textrm{ if $p > f_r > 0$} \\
+%    1-\theta & \textrm{ otherwise}
+%\end{cases}
+%\end{equation}
+%\noindent if the ancestral variant is known and: 
+\begin{equation}
+P_n(f_a | \theta) =  
+\begin{cases}
+\theta(\frac{1}{N-1}+\frac{1-\delta_{f_a,N-f_a}}{N-1}) & \textrm{if $N/2 \geqslant f_a > 0$}\\
+%\frac{\theta}{2}(\frac{1}{N-1}+\frac{1}{N-1}) & \textrm{if $N > f_r > 0$}\\
+1-\theta & \textrm{  if $f_a$ is 0},
+%\frac{1-\theta}{2} & \textrm{ otherwise},
+\end{cases}
+\end{equation}
+
+\subsubsection{Estimation of the global levels of variability from the whole observed data:}
+
+\noindent In case the $\theta$ prior would not directly assigned by the researcher, an alternative is to estimate the level of variability from the global dataset. \cite{Lynch:2014aa}  ML algorithm can be used to estimate the frequency of  the major allele per position and then use this estimates to obtain the global level of variability. For each position $x$: 
+
+\begin{equation}
+\begin{split}
+\widehat{f_{A_x}} = \frac{\frac{n_{rA}}{n_{rA}+n_{rR}}[1-\frac{2\widehat{\xi}}{3}]-\frac{\widehat{\xi}}{3}}{1-\frac{4\widehat{\xi}}{3}}.
+\end{split}
+\end{equation}
+
+%\noindent The global estimation of $\theta$ can be obtained given the model scenario defined (SNM, Expansion or Uniform distribution):
+%\begin{equation}
+%\begin{split}
+%\widehat{\theta} = \frac{1}{L}\sum_{x=1}^{L}\frac{1}{a_{h_x}}\sum_{i=1}^{n_{C_x}} \epsilon_{i}(x),
+%\end{split}
+%\end{equation}
+%\noindent where $L$ is the length of the total positions, $n_{C_x} = p \left[1 - \left(1 - \frac{1}{p}\right)^{n_{r_x}}\right]$ \citep{Ferretti:2018aa}, $\epsilon_i(x)$ is 1 if the frequency of the reference allele ($f_{R_x} \cdot n_{C_c}$) is $i$, otherwise is zero, and $a_{h_x} = \sum_{i=1}^{n_{C_x}-1}1/i$ for SNM, $a_{h_x} = \sum_{i=1}^{n_{C_x}-1}\frac{1}{i(i+1)}$ for exponential expansion and $a_{h_x} = n_{C_x}-1$ for a uniform distribution of the Site Frequency Spectrum.
+\noindent The global estimation of $\theta$ is obtained with Tajima's heterozygosity estimation:
+\begin{equation}
+\begin{split}
+\widehat{\theta} =  \frac{1}{L}\sum_{x=1}^{L}2f_{A_x}(1-f_{A_x})\frac{n_{C_x}-1}{n_{C_x}},
+\end{split}
+\end{equation}
+\noindent where $n_{C_x}$ is the mean number of contributed lines at position x given by  the number of pooled  samples and the total number of reads at this position (following equation \ref{mean_contributed}).
+
+\ifdraft 
+\noindent The expected number of invariant positions considering that all observed variants are produced by sequence errors (\textit{i.e.}, monomorphic population) is:
+\begin{equation}
+\begin{split}
+E(n_{p_{0\xi}}) = \sum_{i=1}^{np}\prod_{j=1}^{n_{ri}}(1-\xi_{ij}).
+\end{split}
+\end{equation}
+If we consider population variability in the sample, the expected number of invariant positions is reduced by the number of segregating sites:
+\begin{equation}
+\begin{split}
+E(n_{p_{0}}) \simeq E(n_{p_{0\xi}}) - E({S}).
+\end{split}
+\label{np0V}
+\end{equation}
+$E({S}) = \theta \sum_{i=1}^{n_p}c_{n_{Ci}}$ is the expected number of segregating sites and $c_{n_{C}} = a_{n_{C}}$ for the SNM, $c_{n_{C}} = \sum_{i=1}^{n_{C}-1}\frac{1}{i(i+1)}$ for the exponential expansion model and $c_{n_{C}} = n_{C}-1$ for a flat distribution (note that this expression does not count the number of segregating sites falling on a position with an error, which is considered a very low probability). The expected number of variant positions is $E(n_{p_{V}}) = n_p - E(n_{p_{0}})$ and can be used to calculate the adjusted error rate (in contrast to equation \ref{omega_empirical}) for each error term in variant positions, here assuming a specific population scenario and accurate sequence error probabilities:
+\begin{equation}
+\begin{split}
+{\omega_e} =  \frac{E(n_{\xi_{T}})}{E(n_{p_{V}}) \frac{E(n_{\xi_{T}})}{n_p}} = \frac{n_p}{E(n_{p_{V}})},
+\end{split}
+\end{equation}
+that is, the expected number of read errors divided by the expected number of read errors in variant positions.\\
+
+\noindent Furthermore, the equation \ref{np0V} can also be employed to estimate the $\theta$ population variability parameter using the empirically observed invariant positions ($n_{p0}$): \\
+\begin{equation}
+\begin{split}
+\widehat{\theta} = \frac{E(n_{p_{0\xi}}) - n_{p_{0}}}{\sum_{i=1}^{n_p}c_{n_{Ci}}}.
+\end{split}
+\end{equation}
+
+\noindent Remember that all this above approach is based on a relative low number of reads and a small error rate. It would be recommendable to use at least a minimum sequence error rate one order of magnitud smaller than the inverse number of reads. In the following text we use the sequencing error expressions $\xi_R$ and $\xi_A$, although it is convenient to replace them by $\xi_{RV}$ and $\xi_{AV}$ for variant positions. %
+For the implementation of the algorithm, the empirical corrected error rate (that is $\omega$ and not $\omega_e$) is used. %
+\fi
+
+\section{Methodology to validate results}
+In order to estimate the accurateness of the algorithm, we used  different estimators of the level of variability based on the frequency spectrum and considering missing data \citep{Ferretti:2012aa}. The reason to use this estimators is because in real data we can not reconstruct a single frequency spectrum for the whole genome but the variability, because the sample size can be different at each position. The different estimators account for the different frequencies, so biases can be detected.\\
+
+\noindent The estimators are based in this expression: 
+\begin{equation}
+\hat{\theta}=\frac{1}{L}\sum_{x=1}^L\sum_{i=1}^{n_x-1}i\omega_{i,n_x}\xi_i(x)\quad ,\quad 
+\frac{1}{L}\sum_{x=1}^L\sum_{i=1}^{n_x-1}\omega_{i,n_x}=1 \label{est_md}
+\end{equation}
+where $\xi_i(x)$ is an index variable that is 1 if there is a segregating site with $i$ derived alleles in position $x$ and 0 otherwise. The weights $\omega_{i,n_x}$, $\Omega_{i,n_x}$ define the specific estimator \citep{achaz2009frequency}, where $n_x$ is the sample size at position $x$. \\
+
+\noindent The used estimators are Watterson \citep{watterson1975number}, Tajima \citep{tajima1983evolutionary}, Fu \& Li \citep{fu1993statistical}, Fay \& Wu \citep{fay2000}, Zeng \citep{Zeng2006statistical}, Ferretti \citep{Ferretti:2017aa} and Watterson and Tajima estimators without singletons \citep{achaz2009frequency}. The weights are obtained from \citep{achaz2009frequency} and \cite{hellmann2008population} as is indicated in \citep{Ferretti:2012aa}.  Under a stationary Neutral Model, all these estimates of the variability should give statistically equivalent values. These estimators are focused on different sections of the SFS (they have different weights) and thus can give us an accurate idea about the estimation of the SFS using this method.
+
+\section{Validation of each of the methodological steps using R scripts}
+Validation of the three main steps (Combinatorics, Sample frequency and Sequencing error estimation) is initially tested using R scripts. First we tested the estimation of the contributed samples using the combinatorics expression, where the frequency of the sample are known and there are no sequencing errors. We tested for a pool sample size of $n=50$ having a variation of $theta=0.05$ under the SNM and having 2 (no repeated samples), 20 (several are repeated) and 200 (all samples are many times repeated) reads per position (Figure~\ref{testCombinatorics}). We see in that the estimation of variability is accurate in all combinations and estimates of $\theta$.
+
+\begin{figure}[htbp]
+\begin{center}
+	\centering
+	\begin{subfigure}{.3\textwidth}
+		\includegraphics[width=\textwidth]{nreads_2-boxplot_Freqs-Known_NoSeqErrors_Watt.pdf}
+		\caption{Watterson $\theta$ Estimate for number of reads = 2}
+	\end{subfigure}
+	\begin{subfigure}{.3\textwidth}
+		\includegraphics[width=\textwidth]{nreads_20-boxplot_Freqs-Known_NoSeqErrors_Watt.pdf}
+		\caption{Watterson $\theta$ Estimate for number of reads = 20}
+	\end{subfigure}
+	\begin{subfigure}{.3\textwidth}
+		\includegraphics[width=\textwidth]{nreads_200-boxplot_Freqs-Known_NoSeqErrors_Watt.pdf}
+		\caption{Watterson Estimate for number of reads = 200}
+	\end{subfigure}
+	\caption{Testing the inference of contributed lines with the Combinatorics expressions. For each subfigure, the first column shows the variability in the population for 100 bins of 10000 positions, the second column is the variability for a pooled sample of 50 samples, the third is the variability for the sample reads, and the fourth is the variability for the contributed sample reads (\textit{i.e.}, after correction with this algorithm).}
+	\label{testCombinatorics}
+\end{center}
+\end{figure}
+
+\noindent Next, we tested the inference of the sample frequency (together with combinatorics) using a pool sample size of $n=50$, $theta=0.05$ under the SNM and having 20 reads per position. We tested the estimation of theta using the Fu \& Li, Wattterson and Tajima $\theta$ estimators, which are estimating the variability using only singletons, the number of total variants and the average number of pairwise differences, respectively (see Figure~\ref{testFrequency}). We observe that the different estimators are estimating the correct value of variability, which suggest no deviations of the inferred frequency in relation to the expected frequency of the variants.
+\begin{figure}[htbp]
+\begin{center}
+	\centering
+	\begin{subfigure}{.3\textwidth}
+		\includegraphics[width=\textwidth]{nreads_20-boxplot_Freqs-UnKnown_NoSeqErrors_FuLi.pdf}
+		\caption{Fu \& Li $\theta$ Estimate}
+	\end{subfigure}
+	\begin{subfigure}{.3\textwidth}
+		\includegraphics[width=\textwidth]{nreads_20-boxplot_Freqs-UnKnown_NoSeqErrors_Watt.pdf}
+		\caption{Watterson $\theta$ Estimate}
+	\end{subfigure}
+	\begin{subfigure}{.3\textwidth}
+		\includegraphics[width=\textwidth]{nreads_20-boxplot_Freqs-UnKnown_NoSeqErrors_Tajima.pdf}
+		\caption{Tajima $\theta$ Estimate}
+	\end{subfigure}
+	\caption{Testing the inference of frequency variants lines with the Frequency Sample expressions. See explanation of the columns in legend of Figure~\ref{testCombinatorics}}
+	\label{testFrequency}
+\end{center}
+\end{figure}
+
+\noindent Finally, we tested the inference of sequencing errors (together with combinatorics and frequency inference) using a sequencing error rate $\xi=0.01$ and two different levels of variability ($\theta=0.05$ and $\theta=0.01$), considering 20 reads per position. Different estimators of the levels of variability were also tested in order to detect deviations (Figure~\ref{testSeqErrors}). We see that the patterns of variability are correctly estimated, even in case of a¡having the same variability ratio than the sequencing error ratio.
+\begin{figure}[htbp]
+\begin{center}
+	\centering
+	\begin{subfigure}{.3\textwidth}
+		\includegraphics[width=\textwidth]{theta_5x100_nreads_20-boxplot_Freqs-UnKnown_SeqErrors_FuLi.pdf}
+		\caption{Fu \& Li $\theta$ Estimate for $\theta=0.05$ and $\xi=0.01$}
+	\end{subfigure}
+	\begin{subfigure}{.3\textwidth}
+		\includegraphics[width=\textwidth]{theta_5x100_nreads_20-boxplot_Freqs-UnKnown_SeqErrors_Watt.pdf}
+		\caption{Watterson $\theta$ Estimate for $\theta=0.05$ and $\xi=0.01$}
+	\end{subfigure}
+	\begin{subfigure}{.3\textwidth}
+		\includegraphics[width=\textwidth]{theta_5x100_nreads_20-boxplot_Freqs-UnKnown_SeqErrors_Tajima.pdf}
+		\caption{Tajima $\theta$ Estimate for $\theta=0.05$ and $\xi=0.01$}
+	\end{subfigure}
+	\begin{subfigure}{.3\textwidth}
+		\includegraphics[width=\textwidth]{theta_1x100_nreads_20-boxplot_Freqs-UnKnown_SeqErrors_FuLi.pdf}
+		\caption{Fu \& Li $\theta$ Estimate for $\theta=0.01$ and $\xi=0.01$}
+	\end{subfigure}
+	\begin{subfigure}{.3\textwidth}
+		\includegraphics[width=\textwidth]{theta_1x100_nreads_20-boxplot_Freqs-UnKnown_SeqErrors_Watt.pdf}
+		\caption{Watterson $\theta$ Estimate for $\theta=0.01$ and $\xi=0.01$}
+	\end{subfigure}
+	\begin{subfigure}{.3\textwidth}
+		\includegraphics[width=\textwidth]{theta_1x100_nreads_20-boxplot_Freqs-UnKnown_SeqErrors_Tajima.pdf}
+		\caption{Tajima $\theta$ Estimate for $\theta=0.01$ and $\xi=0.01$}
+	\end{subfigure}
+	\caption{Testing the inference of sequencing errors with the Sequencing errors expressions. See explanation of the columns in legend of Figure~\ref{testCombinatorics}.}
+	\label{testSeqErrors}
+\end{center}
+\end{figure}
+
+
+\section{Implementation}
+First, a filtering step for homologous positions of NGS data was performed as indicated above. %
+%[PERHAPS it will be necessary to include another methods, like the LRT and/or the Threshold methods]. %
+Afterwards, the calculation of the posterior distribution was performed with our algorithm using the Metropolis algorithm method. %
+% [EXPLAIN here the  MHMCMC].\\
+In our implementation, the Metropolis algorithm starts using the mean observed frequency and $p$ values for the given sampled position to obtain the initial parameters for the first iteration (rounded to the lowest integer for each frequency) and to calculate the log-probability for this parameters ($f(x) = log(P_{\nu_{CA}\nu_{CR}})$). %
+The second step implies to do a number of iterations. They are performed in the following way: For each iteration generate a new set of parameters  (let's say $x'$) according to the parameters of the previous data, using the conditional probability for calculating the new proposal, $P(\nu_{CA'},\nu_{CR'}, \pi_{R'}, \nu_{\xi_{A}'}, \nu_{\xi_{R}'} | \nu_{CA},\nu_{CR}, \pi_{R}, \nu_{\xi_{A}}, \nu_{\xi_{R}})$. %We assume equal probability for transition in one or in the another direction. %
+%The conditional probability for the new proposal is: 
+%\begin{equation}
+%\begin{split}
+%%P(n_{r}|\theta,p,\nu_{CA},n_{C},\xi) = P(n_r|p,p,\zeta_p) =\\ \frac{P(p|n_r,p,\zeta_p) P(n_r,p,\zeta_p)}{\sum_{i=1}^{p}P(i|n_r,p,\zeta_p) P(n_r,p,\zeta_p)} = \frac{ \frac{\frac{p!}{(p-n_{C})!} S(n_{r{\zeta_p}},n_{C})}{p^{n_{r\bar{\zeta_p}}}} }{\sum_{i=1}^{p} \frac{\frac{p!}{(p-i)!} S(n_{r{\zeta_p}},i)}{p^{n_{r\bar{\zeta_p}}}}}
+%%P(n_{C_{x'}}|n_{C_{x}},n_r-n_\xi) = P(n_{C_{x'}}|n_r-n_\xi,p) P(n_r-n_\xi|n_{C_{x}},p).
+%%P(n_{C_{x'}}|n_{C_{x}},n_r) = P(n_{C_{x'}}|n_r,p,\zeta_p) P(n_r|n_{C_{x}},p,\zeta_p).
+%Q(x'|x) = \\P(\nu_{CA'},\nu_{CR'}, \pi_{R'}, \nu_{\xi{A}'}, \nu_{\xi{R}'} | \nu_{CA},\nu_{CR}, \pi_{R}, \nu_{\xi_{A}}, \nu_{\xi_{R}},n_{rR},n_{rA},\xi,\theta,p) = \\
+%P(\nu_{CA'},\nu_{CR'}, \pi_{R'}, \nu_{\xi{A}'}, \nu_{\xi{R}'} | n_{rR},n_{rA},\xi,\theta,p)  \cdot \\ %P(\nu_{CA},\nu_{CR}, \pi_{R}, \nu_{\xi_{A}}, \nu_{\xi_{R}}|n_{rR},n_{rA},\xi,\theta,p). 
+%\end{split}
+%\label{Pnccond}
+%\end{equation}
+Next, it is calculated the acceptance ratio $\alpha = \frac{f(x')}{f(x)}$%\frac{Q(x|x')}{Q(x'|x)}$. %, where $Q(x'|x)$ is the transition probability of having a number of contributed lines and the frequency of each allele given the previous iteration.
+If f $\alpha \geqslant ran(1)$ (where $ran(1)$ is a random number between 0 and 1) then the new parameters set is accepted and becomes the new step in the Markov Chain. Otherwise, reject the new set of parameters and the current set will be again the new step in the Markov Chain. %
+
+A period of burnin (that is, an initial process in which accepted chains are not used for the posterior distribution) %was set to 1/4 of the total iterations. After burnin period, 
+becomes unnecessary when using the whole prior distribution for sampling new parameters. This algorithm is some less efficient than MHMCMC but simpler.
+Only 1/10 iterations were kept for the analysis of the posterior distribution in order to avoid correlation among contiguous sets in the chain. The number of effective iterations performed to calculate the posterior distribution of the parameters for each position was set to 5000. \\
+
+The inference of the best $n_{C}$ and $\nu_{CA}$ (or all four bases, that is $\nu_{CAs}$, $n_{CTs}$, $n_{CCs}$ and $n_{CGs}$) were obtained from %two different methods: %
+sampling the joint posterior distribution.
+%(i) the mean of the marginal posterior distribution of all possible values and (ii) the least common values from the four estimates $\nu_{CAs}$, $n_{CTs}$, $n_{CCs}$ and $n_{CGs}$ obtained from the jointed multi-parametric posterior distribution. In the latter case, we used a percentil value (\textit{e.g.}, \textit{perc} = 0.05) to collect the most common combinations of parameters from the joint posterior distribution (so we collect the 1-\textit{perc} of the joint posterior distribution). Although this method is highly conservative (the number of $\nu_C$ will be considerably reduced), it is expected to have unbiased estimates of variability. %
+We translated the obtained values to a multi-fasta file by rounding the number of effective contributed lines and sampling the frequencies from the values of the posterior distribution.\\
+The implementation will works well for $min(n_r,ploidy) < 5000$.%
+
+\section{Validation with NGS simulated data}
+A number of simulations using different number of initial samples per NGS lane and different read depth were performed in order to study the behaviour of the method. The ranges of initial sample sizes per lane vary from 2, 8, 64, and 128, which includes a wide number of different experiments (from  diploid and polyploid individuals to moderated size pools). The ranges of read depth per lane included were  2, 4, 8, 16 and 64. \\
+
+The simulations were performed using the Stationary Standard Neutral Model. That means that all the different  used estimations of the nucleotide variability should give the same result under this conditions. Finally, in order to test the prior distributions included (which assume the SNM), we also tested other evolutionary models: (i) expansion model, which results in an excess of singletons in relation to the SNM;  and (ii) an inbreeding diploid population, which results in a defect of singletons in relation to the SNM. 
+ 
+\subsection{Empirical data analysis}
+
+%Still under development. Different data structure is analyzed n order to show examples of use of the method here proposed. Polyploid individuals (\textit{e.g.}, \textit{Fragaria vesca}), a pooled population of individuals from a  middle size sample (around diploid 100 individuals) and a large pooled population from small species in which individuals are difficult to separate) around 1000 individuals would be used as examples.
+Sequencing data from Drosophila pools is used and the results are contrasted and validated with results obtained from individual sequencing and with results using other methodologies.
+
+\newpage
+\bibliographystyle{genetics}
+\bibliography{popgen}
+
+\end{document}

@@ -1,0 +1,47 @@
+This is BibTeX, Version 0.99d (TeX Live 2015)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
+The top-level auxiliary file: PScaller.aux
+The style file: genetics.bst
+Database file #1: popgen.bib
+You've used 19 entries,
+            2828 wiz_defined-function locations,
+            720 strings with 8007 characters,
+and the built_in function-call counts, 13781 in all, are:
+= -- 1096
+> -- 761
+< -- 7
++ -- 354
+- -- 195
+* -- 1254
+:= -- 1948
+add.period$ -- 38
+call.type$ -- 19
+change.case$ -- 156
+chr.to.int$ -- 19
+cite$ -- 19
+duplicate$ -- 1027
+empty$ -- 959
+format.name$ -- 254
+if$ -- 2753
+int.to.chr$ -- 1
+int.to.str$ -- 1
+missing$ -- 179
+newline$ -- 80
+num.names$ -- 76
+pop$ -- 388
+preamble$ -- 1
+purify$ -- 137
+quote$ -- 0
+skip$ -- 422
+stack$ -- 0
+substring$ -- 559
+swap$ -- 597
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 171
+warning$ -- 0
+while$ -- 79
+width$ -- 0
+write$ -- 231
+ 

@@ -1,0 +1,24 @@
+PFcaller: A Frequency Caller for Polyploid and Pooled Sequences. version b20220509.
+
+Usage of PFcaller:
+
+PFcaller -h [help and exit]
+#INPUT/OUTPUT:
+         -i [input pileup file (nothing is stdin)]
+         -o [output file name (nothing is stdout, if extension is '.gz' then zipped)]
+#MANDATORY PARAMETERS:
+         -m [minimum read depth]
+         -M [maximum read depth]
+         -q [minumum Base Quality. (Phred)]
+         -p [ploidy]
+         -s [seed]
+         -S [name of the file containing the name(s) of scaffold(s) and their length (separated by a tab), one per line (ex. fai file)]
+#OPTIONAL PARAMETERS:
+         -f [Output format: '0':numeric, 'f':fasta, 't':transposed fasta, 'g':gVCF. DEFAULT: 't']
+         -r [prior dist: '1':snm, '2':uniform, '3':exponential, '4':uniform-no-theta. DEFAULT: '1']
+         -t [prior value: theta/nt (-1 means auto-inferred from whole data). DEFAULT: -1]
+         -n [# MC iterations. DEFAULT: 100]
+         -e [sections in which are divided the SNPs in relation to BaseQuality (higher means lower precision). DEFAULT: 1]
+         -g [outgroup defined at reference (1/0). DEFAULT: 0]
+         -d [testing for having reads at both strands (1/0). DEFAULT: 0]
+
