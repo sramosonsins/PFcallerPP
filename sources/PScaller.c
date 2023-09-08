@@ -19,7 +19,7 @@ void acceptance (struct MCMCsample *current, struct MCMCsample *next){
     current->lnprob=next->lnprob;
 }
 /*///////////////////////////////////////*/
-void doMCMCiterbial(struct MCMCsample *current, double *lnfact, double ***lncombin,double ***combin, double *lnprior, struct featpos *featp, unsigned long max_cov, double theta, long int *seed, unsigned long pmc, unsigned long poolsize, double pe1, double pe2, double pe3, double pe4, double pee, int priortype, int outg, unsigned long it, unsigned long iter){
+void doMCMCiterbial(struct MCMCsample *current, double *lnfact, double ***lncombin,double ***combin, double *lnprior, struct featpos *featp, unsigned long max_cov, double theta, long int *seed, unsigned long pmc, unsigned long poolsize, double pe1, double pe2, double pe3, double pe4, double pee, int priortype, int outg, unsigned long it, unsigned long iter, double ****pbfold){
     
     struct MCMCsample next;
     double random0,random1,random2,random3,random4,random5/*,random6*/;
@@ -38,7 +38,7 @@ void doMCMCiterbial(struct MCMCsample *current, double *lnfact, double ***lncomb
     newParamProposal_bial(current,&next,combin,featp->observed,lnfact,lnprior,
                           random0,random1,random2,random3,random4,random5/*,random6*/,
                           max_cov, theta,pmc,poolsize, pe1, pe2, pe3, pe4, pee, priortype,
-                          outg, it, iter, &lnprob);
+                          outg, it, iter, &lnprob, pbfold);
     next.lnprob = lnprob;
     
     /*
@@ -79,7 +79,7 @@ int PScallerMCMCbial(double *lnfact, double ***lncombin, double ***combin,double
     int done=0;
     
     /*posteriors*/
-    unsigned long i,k;
+    unsigned long i,j,k;
     unsigned long *post_nc;
     unsigned long *post_p1, *post_p2;
     unsigned long *post_ner1, *post_ner2, *post_ner3, *post_ner4;
@@ -103,110 +103,78 @@ int PScallerMCMCbial(double *lnfact, double ***lncombin, double ***combin,double
     /*MCMC initialization*/
     struct MCMCsample current;
     double pe1,pe2,pee,pe3,pe4;
-    //unsigned long nr;
     double lnprob;
- 
-    //nr  = featp->observed.freq[0] + featp->observed.freq[1] + featp->observed.freq[2] + featp->observed.freq[3];
+    unsigned long nr;
+
+    nr  = featp->observed.freq[0] + featp->observed.freq[1] + featp->observed.freq[2] + featp->observed.freq[3];
     
     if(mean_ml_error == 0.0) {
         pe2 = 1e-300;
         pe3 = 1e-300;
         pe4 = 1e-300;
         pee = 1e-300;
-        pe1 = featp->observed.error_mean[0];
-        if(featp->observed.freq[1]>0) pe2 = featp->observed.error_mean[1];
+        pe1 = featp->observed.error_mean[0]; /*P(observed1 | real n2) = phred score*/
+        if(featp->observed.freq[1]>0) pe2 = featp->observed.error_mean[1];/*P(observed2 | real n1)*/
         if(featp->observed.freq[2]>0) pee = pe3 = featp->observed.error_mean[2];
-        if(featp->observed.freq[3]>0) {pee += featp->observed.error_mean[3]; pe4 = featp->observed.error_mean[3];}
+        if(featp->observed.freq[3]>0) {pe4 = featp->observed.error_mean[3]; pee += pe4; }
         if(featp->observed.freq[2]>0 && featp->observed.freq[3]>0) pee /= 2.0;
-        pe1 = pe1 * (1.-pe2) / (1.-pe1-pe2);
-        pe2 = pe2 * (1.-pe1) / (1.-pe1-pe2);
+        /*Raineri approach*/
+        pe1 = pe2 * (1.-pe1) / (1.-pe1-pe2); /*P(real n1 | observed2) modified 28052023 (Raineri et al. 2012 approach)*/
+        pe2 = pe1 * (1.-pe2) / (1.-pe1-pe2); /*P(real n2 | observed1) modified 28052023 (Raineri et al. 2012 approach)*/
     }
     else {
         pe1 = pe2 = pe3 = pe4 = pee = mean_ml_error;
     }
-    /* Include here a function to calculate all pool + population frequencies before sorting reads by size: include restrictions */
-    /*lnpool is an array with unfolded and real probabilities*/
-    double ****lnpool;
-    lnpool = (double ****)calloc((unsigned int)pmc+1,sizeof(double ***));
-/*
-    double phiA, phiR;
-    int minorE1, minprE2;
+    
+    /*///////////////////////////////////*/
+    /*...20230905...*/
+    /* Include here the function to calculate all pool + population frequencies before sorting reads by size: include restrictions */
+    /* The array can be calculated here (before entering in next functions), because the parameters will change in any "reduced" case */
+    
+    double phiA, phiR,prob_bin_p;
+    long int minorE1, minorE2,prE1,prE2;
+    long int pr;
+    unsigned long nrm[4];
+
+    double ****pbfold;
+    /*The size of dimensions is reduced to reduce memory and increase speed: ok?*/
+    minorE1 = minl(featp->observed.cov*(pe1 + pe2) + ADDMHITS1, featp->observed.cov/2); /*approx*//* +ADDMHITS1 is an arbitrary (large) number for additional mhits over mean*/
+    minorE2 = minl(featp->observed.cov*(pe1*pe1 + pe2*pe2) + ADDMHITS2, featp->observed.cov/2); /*approx*//* +ADDMHITS2 is an arbitrary (large) number  for additional mhits over mean*/
+    pbfold = (double ****)calloc((unsigned int)pmc/2+1,sizeof(double ***));
+    for(i=0;i<pmc/2+1;i++) {
+        pbfold[i] = (double ***)calloc((unsigned int)nr/2+1,sizeof(double **));
+        for(j=0;j<nr/2+1;j++) {
+            pbfold[i][j] = (double **)calloc((unsigned int)minorE1+1,sizeof(double *));
+            for(k=0;k<minorE1+1;k++) {
+                pbfold[i][j][k] = (double *)calloc((unsigned int)minorE2+1,sizeof(double));
+            }
+        }
+    }
+    
     for(i=0;i<pmc+1;i++) {
         //pool
         phiA = (double)i/pmc * (1.0-pe1) + (1.0-(double)i/pmc)*pe1;
         phiR = (1.0-(double)i/pmc) * (1.0-pe2) + ((double)i/pmc)*pe2;
-        minprE1 = (pmc*pe1 + 2*pmc*pee < pmc ?, pmc*pe1 + 2*pmc*pee, pmc);
-        for(prE1=0; prE1=minprE1; prE1++) {
-            minprE2 = (pmc*pee + 2*pmc*pee < pmc-prE1 ?, pmc*pee + 2*pmc*pee, pmc-prE1);
-            for(prE2=0; prE2=minprE2; prE2++) {
-                 for(pr=(pmc-prE1-prE2); pr<=0; pr--) {
-                   # unfolded but order known
-                   nr1 = nr-pr-prE1-prE2;
-                   nr2 = pr;
-                   nr3 = prE1;
-                   nr4 = prE2;
-                   prob_bin_p[ps+1,pr+1,prE1+1,prE2+1] = dmultinom(x=c(nr1,nr2,nr3,nr4),size=nr,prob=c(phiR,phiA,pe1,pe2));
-                   #unfolded and order unknown
-                   nrm = sort(c(nr1,nr2,nr3,nr4),decreasing=T)
-                   nr1 = nrm[1];
-                   nr2 = nrm[2];
-                   nr3 = nrm[3];
-                   nr4 = nrm[4];
-                   # prob_bin[ps+1,nr2+1,nr3+1,nr4+1] = prob.bin[ps+1,nr2+1,nr3+1,nr4+1] + prob.bin.p[ps+1,pr+1,prE1+1,prE2+1]
-                   #folded and order unknown
-                   prob_bin_folding[min(ns-ps,ps)+1,nr2+1,nr3+1,nr4+1] =  prob.bin.folding[min(ns-ps,ps)+1,nr2+1,nr3+1,nr4+1] + prob.bin.p[ps+1,pr+1,prE1+1,prE2+1] / (2-deltak(ns-ps,ps))
-                 }
-            }
-        }
-    }
-
-        for(k=0;k<NPOPINTV+1;k++) {
-                //frequency
-                lnpool[k] = (double **)calloc((unsigned int)k+1,sizeof(double *));
-                for(i=0;i<pmc+1;i++) {
-                    lnpool[k][i] = (double *)calloc((unsigned int)max_cov+1,sizeof(double));
+        phiA = phiA/(phiA+phiR+pe1+pe2);
+        phiR = phiR/(phiA+phiR+pe1+pe2);
+        pe1  = pe1/(phiA+phiR+pe1+pe2);
+        pe2  = pe2/(phiA+phiR+pe1+pe2);
+        for(prE1=0; prE1<minorE1+1; prE1++) {
+            for(prE2=0; prE2<minorE2+1; prE2++) {
+                for(pr=nr-minorE1-minorE2; pr>=0; pr--) {
+                    //unfolded but order known
+                    nrm[0] = nr-pr-prE1-prE2; nrm[1] = pr; nrm[2] = prE1; nrm[3] = prE2;
+                    prob_bin_p = lnmultinomial4(nrm[0],nrm[1],nrm[2],nrm[3],phiA,phiR,pe1,lnfact);
+                    qsort(nrm,4,sizeof(unsigned long),compunsign);
+                    //folded and order unknown
+                    pbfold[minl(pmc-i,i)][nrm[2]][nrm[1]][nrm[0]] =  pbfold[minl(pmc-i,i)][nrm[2]][nrm[1]][nrm[0]] + exp(prob_bin_p) / (2.0-deltak(pmc-i,i));
                 }
             }
         }
-    
-    for(ps in 0:(ns/1)) {
-       phi.A <- ps/ns*(1-error.seq)+(ns-ps)/ns*error.seq/3
-       phi.R <- (ns-ps)/ns*(1-error.seq)+ps/ns*error.seq/3
-       phi.E1 <- 1/3*error.seq
-       phi.E2 <- 1/3*error.seq
-       #calculation and sum of probabilities for each case
-       for(prE1 in 0:min(nr/1*error.seq + 5,nr) ) { #(ceiling(nr/1)-pr):(0)) {
-         for(prE2 in 0: min(nr/1*error.seq + 5,nr-prE1) ) { #(ceiling(nr/1)-pr-prE1):(0)) {
-           for(pr in (ceiling(nr/1)-prE1-prE2):0) {
-             # unfolded but order known
-             nr1 <- nr-pr-prE1-prE2;
-             nr2 <- pr;
-             nr3 <- prE1;
-             nr4 <- prE2;
-             prob.bin.p[ps+1,pr+1,prE1+1,prE2+1] <-
-               dmultinom(x=c(nr1,nr2,nr3,nr4),size=nr,prob=c(phi.R,phi.A,phi.E1,phi.E2))
-             #unfolded and order unknown
-             nrm <- sort(c(nr1,nr2,nr3,nr4),decreasing=T)
-             nr1 <- nrm[1];
-             nr2 <- nrm[2];
-             nr3 <- nrm[3];
-             nr4 <- nrm[4];
-             # prob.bin[ps+1,nr2+1,nr3+1,nr4+1] <-
-             #   prob.bin[ps+1,nr2+1,nr3+1,nr4+1] +
-             #   prob.bin.p[ps+1,pr+1,prE1+1,prE2+1]
-             #folded and order unknown
-             prob.bin.folding[min(ns-ps,ps)+1,nr2+1,nr3+1,nr4+1] <-
-               prob.bin.folding[min(ns-ps,ps)+1,nr2+1,nr3+1,nr4+1] +
-               prob.bin.p[ps+1,pr+1,prE1+1,prE2+1] / (2-deltak(ns-ps,ps))
-           }
-         }
-       }
-     }
-
- */
+    }
+    /*...20230905...*/
     /*///////////////////////////////////*/
-    
-    newParamProposal_bial(&current,&current,combin,featp->observed,lnfact,lnprior,0.5, 0.5,0.5,0.5,0.5,0.5/*,0.5*/, max_cov,theta, pmc,poolsize, pe1, pe2, pe3, pe4, pee, priortype, outg, 0, iter, &lnprob);
+    newParamProposal_bial(&current,&current,combin,featp->observed,lnfact,lnprior,0.5, 0.5,0.5,0.5,0.5,0.5/*,0.5*/, max_cov,theta, pmc,poolsize, pe1, pe2, pe3, pe4, pee, priortype, outg, 0, iter, &lnprob, pbfold);
     
     current.lnprob = lnprob;
     /*
@@ -221,7 +189,7 @@ int PScallerMCMCbial(double *lnfact, double ***lncombin, double ***combin,double
     */
     i=1;
     do{ /*MCMC*/
-        doMCMCiterbial(&current,lnfact,lncombin,combin,lnprior,featp,max_cov,theta,seed,pmc,poolsize, pe1, pe2, pe3, pe4, pee, priortype, outg, i, iter);
+        doMCMCiterbial(&current,lnfact,lncombin,combin,lnprior,featp,max_cov,theta,seed,pmc,poolsize, pe1, pe2, pe3, pe4, pee, priortype, outg, i, iter, pbfold);
         /*add to posterior, each i replicates and after discarding burnin*/
         if (i>burnin){ /*burn-in*/
             if (i % thinin == 0 && current.lnprob > -10000){
@@ -285,6 +253,18 @@ int PScallerMCMCbial(double *lnfact, double ***lncombin, double ***combin,double
         return 1;
     }
     
+    /*free 4-d matrix*/
+    for(i=0;i<pmc/2+1;i++) {
+        for(j=0;j<nr/2+1;j++) {
+            for(k=0;k<minorE1;k++) {
+                free(pbfold[i][j][k]);
+            }
+            free(pbfold[i][j]);
+        }
+        free(pbfold[i]);
+    }
+    free(pbfold);
+
     /*integrate posterior*/
     double integ_nc, integ_p1,integ_p2;
     double integ_fr1, integ_fr2;
@@ -570,7 +550,7 @@ int compare_(const void *i,const void *j)
 }
 
 /*///////////////////////////////////////*/
-void newParamProposal_bial(struct MCMCsample *current, struct MCMCsample *next,double ***combin, struct Obs observed, double *lnfact,double *lnprior, double random0, double random1, double random2, double random3, double random4, double random5, /*double random6,*/ long max_cov, double theta, unsigned long pmc, unsigned long poolsize, double pe1, double pe2, double pe3, double pe4, double pee, int priortype, int outg, unsigned long it, unsigned long iter, double *lnprob) {
+void newParamProposal_bial(struct MCMCsample *current, struct MCMCsample *next,double ***combin, struct Obs observed, double *lnfact,double *lnprior, double random0, double random1, double random2, double random3, double random4, double random5, /*double random6,*/ long max_cov, double theta, unsigned long pmc, unsigned long poolsize, double pe1, double pe2, double pe3, double pe4, double pee, int priortype, int outg, unsigned long it, unsigned long iter, double *lnprob, double ****pbfold) {
 
     double pval0;
     unsigned long i/*,k,j*/;
@@ -601,16 +581,24 @@ void newParamProposal_bial(struct MCMCsample *current, struct MCMCsample *next,d
     
     mcmc_par = (struct MCMCsample *)calloc((pmc+1),sizeof(struct MCMCsample));
     lnpval =(double *)calloc((pmc+1),sizeof(double));
-    
+    /*
+    double **lnpval;
+     lnpval = (double **)calloc((unsigned int)pmc+1,sizeof(double ***));
+    for(k=0;k<NPOPINTV+1;k++) {
+        //frequency
+        lnpval[k] = (double *)calloc((unsigned int)k+1,sizeof(double *));
+    }
+    */
+
     /*calculate the 2-D grid-matrix probabilities for population freq and for pool freq but not sample until having the total prob.*/
-    multinomialfr_seqbial_sample(observed.freq[0], observed.freq[1], observed.freq[2],observed.freq[3],observed.outg,
-                                 pe1,pe2,pe3,pe4,pee,lnprior,lnfact, mcmc_par, pmc, outg,lnpval,&sumpval);
+    //multinomialfr_seqbial_sample(observed.freq[0], observed.freq[1], observed.freq[2],observed.freq[3],observed.outg,pe1,pe2,pe3,pe4,pee,lnprior,lnfact, mcmc_par, pmc, outg,lnpval,&sumpval); /*to include sorting to calculate lnpval and sumpval*/
+    multinomialfr_seqbial_folded(observed.freq[0], observed.freq[1], observed.freq[2],observed.freq[3],observed.outg, pe1,pe2,pe3,pe4,pee,lnprior,lnfact, mcmc_par, pmc, outg,lnpval,&sumpval,pbfold); /*modify to include sorting to calculate lnpval and sumpval*/
     //}
     /*estimate the probabilities for each parameter (in three sections): */
     Sprob = 0.;
     /*chose random parameters according the probabilities in three sections (heuristic): seq_errors, combinatorics and total(given grid 2D freqa)*/
     for(i=0;i<pmc+1;i++) {
-        /*include the probability of having freq k in the pop and freq i in the pool*/
+        /* 0. include the probability of having (freq k in the pop and) freq i in the pool*/
         mcmc_par[i].lnprob = lnpval[i] - ln(sumpval);
         
         /* 1. sampling the ner1 and ner2 values from the multibinomial distribution using observations*/

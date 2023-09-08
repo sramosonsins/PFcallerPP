@@ -1,4 +1,4 @@
-PFcaller: A Frequency Caller for Polyploid and Pooled Sequences. version b20220509.
+PFcaller: A Frequency Caller for Polyploid and Pooled Sequences. version b20230908.
 
 Usage of PFcaller:
 
@@ -19,6 +19,5 @@ PFcaller -h [help and exit]
          -t [prior value: theta/nt (-1 means auto-inferred from whole data). DEFAULT: -1]
          -n [# MC iterations. DEFAULT: 100]
          -e [sections in which are divided the SNPs in relation to BaseQuality (higher means lower precision). DEFAULT: 1]
-         -g [outgroup defined at reference (1/0). DEFAULT: 0]
-         -d [testing for having reads at both strands (1/0). DEFAULT: 0]
+         -d [testing reads at both strands (1/0). DEFAULT: 0]
 

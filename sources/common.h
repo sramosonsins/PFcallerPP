@@ -18,7 +18,7 @@ extern "C" {
 #define NULL	0
 #endif
     
-#define PSCALLER "PFcaller: A Frequency Caller for Polyploid and Pooled Sequences. version b20220518.\n"
+#define PSCALLER "PFcaller: A Frequency Caller for Polyploid and Pooled Sequences. version b20230908.\n"
 
 #ifndef noMacOS
     #define noMacOS	0
@@ -36,6 +36,8 @@ extern "C" {
 #define BLOCKBASES 1000000
 #define BLOCKSECTS 100000
 #define NPOPINTV 20
+#define ADDMHITS1 5
+#define ADDMHITS2 3
     
 #define THR_ERR 100
     

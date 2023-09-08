@@ -1,0 +1,29 @@
+##fileformat=VCFv4.1
+##FILTER=<ID=LowRDQ,Description="Low read depth/quality">
+##INFO=<ID=TP,Number=1,Type=Integer,Description="Number of Total Samples">
+##INFO=<ID=NS,Number=1,Type=Integer,Description="Number of Samples With Data">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	POOL00000
+chr1	1	.	N	.	.	LowRDQ	TP=1,NS=0,DP=0,AF=0.000	GT	.
+chr1	2	.	N	.	.	LowRDQ	TP=1,NS=0,DP=0,AF=0.000	GT	.
+chr1	3	.	N	.	.	LowRDQ	TP=1,NS=0,DP=0,AF=0.000	GT	.
+chr1	4	.	N	.	.	LowRDQ	TP=1,NS=0,DP=0,AF=0.000	GT	.
+chr1	5	.	N	.	.	LowRDQ	TP=1,NS=0,DP=0,AF=0.000	GT	.
+chr1	6	.	N	.	.	LowRDQ	TP=1,NS=0,DP=0,AF=0.000	GT	.
+chr1	7	.	N	.	.	LowRDQ	TP=1,NS=0,DP=0,AF=0.000	GT	.
+chr1	8	.	N	.	.	LowRDQ	TP=1,NS=0,DP=0,AF=0.000	GT	.
+chr1	9	.	N	.	.	LowRDQ	TP=1,NS=1,DP=5,AF=0.520,0.480	GT	.
+chr1	10	.	G	.	.	PASS	TP=1,NS=1,DP=5,AF=0.500,0.500	GT	0
+chr1	11	.	T	.	.	PASS	TP=1,NS=1,DP=12,AF=0.540	GT	0
+chr1	12	.	T	.	.	PASS	TP=1,NS=1,DP=12,AF=0.460	GT	0
+chr1	13	.	G	.	.	PASS	TP=1,NS=1,DP=12,AF=0.460,0.540	GT	0
+chr1	14	.	G	.	.	PASS	TP=1,NS=1,DP=12,AF=0.460,0.540	GT	0
+chr1	15	.	G	.	.	PASS	TP=1,NS=1,DP=12,AF=0.570,0.430	GT	0
+chr1	16	.	T	.	.	PASS	TP=1,NS=1,DP=12,AF=0.540	GT	0
+chr1	17	.	N	.	.	LowRDQ	TP=1,NS=0,DP=0,AF=0.000	GT	.
+chr1	18	.	N	.	.	LowRDQ	TP=1,NS=0,DP=0,AF=0.000	GT	.
+chr1	19	.	N	.	.	LowRDQ	TP=1,NS=0,DP=0,AF=0.000	GT	.
+chr1	20	.	N	.	.	LowRDQ	TP=1,NS=0,DP=0,AF=0.000	GT	.

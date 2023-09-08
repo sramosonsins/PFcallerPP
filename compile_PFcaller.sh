@@ -25,5 +25,5 @@
 #sudo make install
 
 #To compile:
-gcc ./sources/*.c -lm -o ./bin/PFcaller -Wall -O3 -lz
+gcc ./sources/*.c -lm -o ./bin/PFcaller -Wall -O3 -lz 
 

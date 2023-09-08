@@ -217,9 +217,7 @@ int main(int argc, char** argv) {
         mean_ml_err = 0.0;
         printf("\nNot enough information to estimate the sequence misread using ML. \b Misread sequence assumed from Phred scores.\n");
     }
-    
-    /*Calculate the probability to have a number of reads given a pop frequency and a pool frequency*/
-    
+        
     /* ///////////////////////////// */
     
     if(file_out[0] != '\0') printf ("OK\n");

@@ -68,11 +68,12 @@ double lnmultinomial4(unsigned long n1,unsigned long n2, unsigned long n3, unsig
     if(n1+n2+n3+n4==0)
         return -1E+300;
     
-    lnpow1  = (double)n1 * (double)ln(p1);
-    lnpow2  = (double)n2 * (double)ln(p2);
-    lnpow3  = (double)n3 * (double)ln(p3);
-    if(n4 == 0) lnpow4  = (double)n4 * (double)ln(1.0-(p1+p2+p3));
-    else lnpow4 = 0.;
+    lnpow1 = lnpow2 = lnpow3 = lnpow4 = 0.0;
+    
+    if(n1 != 0) lnpow1  = (double)n1 * (double)ln(p1);
+    if(n2 != 0) lnpow2  = (double)n2 * (double)ln(p2);
+    if(n3 != 0) lnpow3  = (double)n3 * (double)ln(p3);
+    if(n4 != 0) lnpow4  = (double)n4 * (double)ln(1.0-(p1+p2+p3));
     
     
     lnprob =  lnfact[n1+n2+n3+n4] -
@@ -102,7 +103,43 @@ double lnmultinomial3(unsigned long n1,unsigned long n2, unsigned long n3,double
     
     return(lnprob);
 }
-/*/////////////////////////////////////*/
+/*/////////////////////////////////////*/    /*...20230905...*/
+void multinomialfr_seqbial_folded(unsigned long obs_p1, unsigned long obs_p2, unsigned long obs_p3,
+                                  unsigned long obs_p4, unsigned char obs_outg,double pe1, double pe2, double pe3, double pe4,
+                                  double pee, double *lnprior,double *lnfact, struct MCMCsample *mcmc_par,
+                                  unsigned long pmc, int outg, double *lnpval,double *sumpval, double ****pbfold) {
+    
+    unsigned long i,k,j;
+    double lnpar,lnp,popf;
+    double sumtot/*,pR,pA,pE*/;
+    
+    *sumpval = 0.;
+    for(i=0;i<pmc+1;i++) {
+        lnpar = pbfold[minl(pmc-i,i)][obs_p2][obs_p3][obs_p4] ;
+        lnpval[i] = 0.;
+        for(k=0;k<NPOPINTV+1;k++) { /*pop frequency (popfr) used as a non-inferred parameter*/ /*CHANGE AND INCLUDE IN VCF?, then add new dimension to lnpval?*/
+            lnp = lnbinomial(i,pmc-i,(double)k/(double)NPOPINTV,lnfact);
+            if(outg){
+                if(obs_outg==0) j=k;
+                else j=NPOPINTV-k;
+            }
+            else j = minint(k,NPOPINTV-k);
+            popf = lnprior[j];
+            sumtot = exp(lnpar + lnp + popf);
+            
+            *sumpval += (sumtot);
+            lnpval[i] += (sumtot);
+        }
+        lnpval[i] = log(lnpval[i]);
+        
+        mcmc_par[i].frp1 = i;
+        mcmc_par[i].frp2 = pmc - mcmc_par[i].frp1;
+        mcmc_par[i].popfr = 0;
+    }
+
+    return;
+}
+/*/////////////////////////////////////*/    /*...20230905...*/
 void multinomialfr_seqbial_sample(unsigned long obs_p1, unsigned long obs_p2, unsigned long obs_p3,
                                   unsigned long obs_p4, unsigned char obs_outg,double pe1, double pe2,double pe3, double pe4,
                                   double pee, double *lnprior,double *lnfact, struct MCMCsample *mcmc_par,
@@ -117,9 +154,9 @@ void multinomialfr_seqbial_sample(unsigned long obs_p1, unsigned long obs_p2, un
         pR = (double)i/pmc * (1.0-pe2-pee) + (1.0-(double)i/pmc)*pe1;
         pA = (1.0-(double)i/pmc) * (1.0-pe1-pee) + ((double)i/pmc)*pe2;
         //pE = pee;
-        lnpar = lnmultinomial3(obs_p1,obs_p2,obs_p3,pR,pA,lnfact);
+        lnpar = lnmultinomial3(obs_p1,obs_p2,obs_p3,pR,pA,lnfact); /*to modify, including sorting in a value precalculated*/
         lnpval[i] = 0.;
-        for(k=0;k<NPOPINTV+1;k++) { /*pop frequency (popfr) used as a non-inferred parameter*/
+        for(k=0;k<NPOPINTV+1;k++) { /*pop frequency (popfr) used as a non-inferred parameter*/ /*CHANGE AND INCLUDE IN VCF?, then add new dimension to lnpval?*/
             lnp = lnbinomial(i,pmc-i,(double)k/(double)NPOPINTV,lnfact);
             if(outg){
                 if(obs_outg==0) j=k;
@@ -335,6 +372,11 @@ double maxint(int x,int y) {
         return x;
     else
         return y;
+}
+/*///////////////////////////////////////*/
+double deltak(unsigned long i, unsigned long j) {
+    if(i==j) return(1);
+    return(0);
 }
 /*///////////////////////////////////////*/
 void prob_nrb_st(double **combin, double **lncombin, double *lnfact,long double **s2,unsigned long pR, unsigned long max_cov){

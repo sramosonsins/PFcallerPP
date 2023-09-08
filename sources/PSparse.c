@@ -130,6 +130,10 @@ void printtfasta(FILE *fasta_file, SGZip *fasta_file_gz, char *chr_name,unsigned
     free(seqs);
 }
 /*///////////////////////////////////////////////////////////////////*/
+//
+// evaluate:  include several quantiles for the distribution of pop_freqs?.
+// evaluate: for sample_freqs perhaps only include the probability of the chosen frequency and not the distribution?.
+//
 void printgVCF(char *file, char *chr_name, struct typepos *typep, struct featpos *featp,unsigned long first,long int lentotal,unsigned long min_qual, unsigned long cnt2, double theta, unsigned long pmc, unsigned long poolsize, unsigned long iter, long int *seed, struct list_chr_pileup *chr_data, unsigned long num_scaffolds_pileup) {
     
     unsigned long jjc;
@@ -1418,8 +1422,8 @@ void usage(void)
 /*printf("         -v [#interval between iterations in MCMC. DEFAULT: 5]\n");*/
   printf("         -e [sections in which are divided the SNPs in relation to BaseQuality (higher means lower precision). DEFAULT: 1]\n");
 /*printf("         -C [combinatorics prob: # iterations in case ploidy>100. DEFAULT: 200]\n");*/
-  printf("         -g [outgroup defined at reference (1/0). DEFAULT: 0]\n");
-  printf("         -d [testing for having reads at both strands (1/0). DEFAULT: 0]\n");
+/*printf("         -g [outgroup defined at reference (1/0). DEFAULT: 0]\n");*/
+  printf("         -d [testing reads at both strands (1/0). DEFAULT: 0]\n");
   printf("\n");
 }
 /*///////////////////////////////////////////////////////////////////*/

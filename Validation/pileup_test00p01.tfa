@@ -1,0 +1,23 @@
+#PFcaller -S ./chr1_20.txt -p 1 -s 12345 -m 5 -M 20 -q 20 -f t -r 1 -i ./ex16b.pileup -o ../Results/pileup_test00p01 
+#NAMES: >0	
+#CHR:POSITION	GENOTYPES
+chr1:1	N
+chr1:2	N
+chr1:3	N
+chr1:4	N
+chr1:5	N
+chr1:6	N
+chr1:7	N
+chr1:8	N
+chr1:9	N
+chr1:10	G
+chr1:11	T
+chr1:12	T
+chr1:13	G
+chr1:14	G
+chr1:15	G
+chr1:16	T
+chr1:17	N
+chr1:18	N
+chr1:19	N
+chr1:20	N

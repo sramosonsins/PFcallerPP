@@ -25,6 +25,7 @@ extern "C" {
     unsigned long minl(unsigned long x,unsigned long y);
     double minint(unsigned long int x,unsigned long int y);
     double maxint(int x,int y);
+    double deltak(unsigned long i, unsigned long j);
     void prob_nrb_st(double **combin, double **lncombin, double *lnfact,long double **s2,unsigned long pR, unsigned long max_cov);
     void prob_nrb_mc(double **combin, double **lncombin, unsigned long nitermc,unsigned long pR, unsigned long max_cov, long int *seed, unsigned long poolsize, unsigned long pmc);
     double lnmultinomialfr(unsigned long realnR, unsigned long realnA, unsigned long realnE, double pR, double pe1, double pe2, double pee, double *lnfact);
@@ -33,6 +34,7 @@ extern "C" {
     double lnmultinomial3(unsigned long n1,unsigned long n2, unsigned long n3,double p1,double p2,double *lnfact);
     double lnbinomial_seqbial(unsigned long n1, unsigned long n2, unsigned long n3, unsigned long obs_p1, unsigned long obs_p2, unsigned long obs_p3, double pe1, double pe2, double pee, double *lnfact);
     void binomialner_seqbial_sample(unsigned long obs_p1, unsigned long obs_p2, unsigned long obs_p3, double pe1, double pe2, double pee,  double *lnfact, struct MCMCsample *next, double random0, double random1, double random2, unsigned long pmc, double theta, double *lnprob);
+    void multinomialfr_seqbial_folded(unsigned long obs_p1, unsigned long obs_p2, unsigned long obs_p3,unsigned long obs_p4, unsigned char obs_outg,double pe1, double pe2, double pe3, double pe4, double pee, double *lnprior,double *lnfact, struct MCMCsample *mcmc_par, unsigned long pmc, int outg, double *lnpval,double *sumpval, double ****pbfold);
     unsigned long binomial_seqbial_sample(unsigned long nc, double freq, unsigned long min, double random4, double *lnfact, double *lnprob);
     void multinomialfr_seqbial_sample(unsigned long obs_p1, unsigned long obs_p2, unsigned long obs_p3, unsigned long obs_p4 ,unsigned char obs_outg,double pe1, double pe2,double pe3, double pe4, double pee,double *lnprior,double *lnfact, struct MCMCsample *mcmc_par,unsigned long pmc, int outg,double *lnpval,double *sumpval);
     unsigned long combin_seq_sample(unsigned long obs_p1, unsigned long exp_frp1, unsigned long exp_ner1, unsigned long exp_ner2, unsigned long exp_ner3,  double ***combin, double random1, unsigned long poolsize, int diffnt, double *lnprob);
